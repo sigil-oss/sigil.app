@@ -9,7 +9,7 @@ import { usePersistedStore, type AccountMeta } from "@/store/persisted";
 import { useSessionStore } from "@/store/session";
 import { useAutoLock } from "@/hooks/use-auto-lock";
 import { generateRandomSeed, truncateIdentity } from "@/lib/crypto";
-import { unlockVault, createVault, createWallet } from "@/lib/vault";
+import { unlockVault, createVault, createWallet, exportVault } from "@/lib/vault";
 
 export default function VaultDetailScreen() {
   const { id } = useParams<{ id: string }>();
@@ -40,8 +40,28 @@ export default function VaultDetailScreen() {
   const [removeLoading, setRemoveLoading] = useState(false);
 
   const [showHidden, setShowHidden] = useState(false);
+  const [showExport, setShowExport] = useState(false);
 
   if (!vault) return null;
+
+  function doExport() {
+    const data = JSON.stringify({
+      sigil: 1,
+      name: vault!.name,
+      color: vault!.color,
+      accounts: vault!.accounts,
+      exported_at: Date.now(),
+      vault: JSON.parse(exportVault(vault!.encryptedData)),
+    }, null, 2);
+    const blob = new Blob([data], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `sigil-${vault!.name.toLowerCase().replace(/\s+/g, "-")}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setShowExport(false);
+  }
 
   const visible = vault.accounts.filter((a) => !a.hidden).sort((a, b) => a.index - b.index);
   const hidden = vault.accounts.filter((a) => a.hidden).sort((a, b) => a.index - b.index);
@@ -168,6 +188,27 @@ export default function VaultDetailScreen() {
           onRemove={() => { setRemovingAccount(account); setRemovePassword(""); setRemoveError(""); }}
         />
       ))}
+
+      {/* Export vault */}
+      <div style={{ marginTop: "var(--space-4)", paddingTop: "var(--space-4)", borderTop: "1px solid var(--color-border-subtle)" }}>
+        <Button variant="ghost" shape="sharp" size="sm" style={{ width: "auto" }} onClick={() => setShowExport(true)}>
+          Export vault
+        </Button>
+      </div>
+
+      {/* Export modal */}
+      <Modal open={showExport} onClose={() => setShowExport(false)}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
+          <div style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-body)", fontWeight: 500, color: "var(--color-text-display)" }}>
+            Export {vault.name}
+          </div>
+          <div style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-status-warning)", letterSpacing: "0.05em", lineHeight: 1.6 }}>
+            [WARNING] This file contains your encrypted seed. Keep it safe. Anyone with this file and your password can access your funds.
+          </div>
+          <Button onClick={doExport}>Download backup file</Button>
+          <Button variant="ghost" shape="sharp" size="md" style={{ width: "auto", margin: "0 auto" }} onClick={() => setShowExport(false)}>Cancel</Button>
+        </div>
+      </Modal>
 
       {/* Add account modal */}
       <Modal open={addingAccount} onClose={() => setAddingAccount(false)}>

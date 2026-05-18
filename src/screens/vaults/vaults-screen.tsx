@@ -6,10 +6,10 @@ import { Input } from "@/components/input";
 import { Modal } from "@/components/modal";
 import { Tag } from "@/components/tag";
 import { Divider } from "@/components/divider";
-import { usePersistedStore, type VaultMeta } from "@/store/persisted";
+import { usePersistedStore, type VaultMeta, type VaultColor, type AccountMeta } from "@/store/persisted";
 import { useSessionStore } from "@/store/session";
 import { useAutoLock } from "@/hooks/use-auto-lock";
-import { unlockVault, createWallet } from "@/lib/vault";
+import { unlockVault, createWallet, type VaultData } from "@/lib/vault";
 
 const VAULT_COLOR_CSS: Record<string, string> = {
   slate: "var(--color-vault-slate)",
@@ -36,10 +36,18 @@ export default function VaultsScreen() {
   const vaults = usePersistedStore((s) => s.vaults);
   const settings = usePersistedStore((s) => s.settings);
   const setActiveVault = usePersistedStore((s) => s.setActiveVault);
+  const addVault = usePersistedStore((s) => s.addVault);
   const updateVault = usePersistedStore((s) => s.updateVault);
   const removeVault = usePersistedStore((s) => s.removeVault);
   const touchVaultUnlocked = usePersistedStore((s) => s.touchVaultUnlocked);
   const unlock = useSessionStore((s) => s.unlock);
+
+  // Import state
+  interface ImportData { name: string; color: VaultColor; accounts: AccountMeta[]; vault: VaultData; }
+  const [importData, setImportData] = useState<ImportData | null>(null);
+  const [importPassword, setImportPassword] = useState("");
+  const [importError, setImportError] = useState("");
+  const [importLoading, setImportLoading] = useState(false);
 
   const [switchingVault, setSwitchingVault] = useState<VaultMeta | null>(null);
   const [renamingVault, setRenamingVault] = useState<VaultMeta | null>(null);
@@ -110,6 +118,51 @@ export default function VaultsScreen() {
     }
   }
 
+  function openImportPicker() {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json,application/json";
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const parsed = JSON.parse(text);
+        if (parsed.sigil !== 1 || !parsed.vault || !parsed.name) throw new Error();
+        setImportData({ name: parsed.name, color: parsed.color ?? "slate", accounts: parsed.accounts ?? [], vault: parsed.vault as VaultData });
+        setImportPassword("");
+        setImportError("");
+      } catch {
+        // silently ignore malformed files — user can try again
+      }
+    };
+    input.click();
+  }
+
+  async function doImport() {
+    if (!importData) return;
+    setImportLoading(true);
+    setImportError("");
+    try {
+      await unlockVault(importData.vault, importPassword);
+      const newVault: VaultMeta = {
+        id: globalThis.crypto.randomUUID(),
+        name: importData.name,
+        color: importData.color,
+        createdAt: Date.now(),
+        lastUnlockedAt: 0,
+        accounts: importData.accounts,
+        encryptedData: importData.vault,
+      };
+      addVault(newVault);
+      setImportData(null);
+    } catch {
+      setImportError("WRONG PASSWORD");
+    } finally {
+      setImportLoading(false);
+    }
+  }
+
   const statusBar = (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
       <button onClick={() => navigate("/dashboard")} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-secondary)", letterSpacing: "0.05em", padding: 0 }}>
@@ -118,9 +171,14 @@ export default function VaultsScreen() {
       <span style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-label)", fontWeight: 500, color: "var(--color-text-primary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
         Vaults
       </span>
-      <button onClick={() => navigate("/setup/create")} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-secondary)", letterSpacing: "0.05em", padding: 0 }}>
-        + NEW
-      </button>
+      <div style={{ display: "flex", gap: "var(--space-3)" }}>
+        <button onClick={openImportPicker} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-secondary)", letterSpacing: "0.05em", padding: 0 }}>
+          IMPORT
+        </button>
+        <button onClick={() => navigate("/setup/create")} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-secondary)", letterSpacing: "0.05em", padding: 0 }}>
+          + NEW
+        </button>
+      </div>
     </div>
   );
 
@@ -210,6 +268,32 @@ export default function VaultsScreen() {
           />
           <Button onClick={doRename} disabled={!renameValue.trim()}>Save</Button>
           <Button variant="ghost" shape="sharp" size="md" style={{ width: "auto", margin: "0 auto" }} onClick={() => setRenamingVault(null)}>Cancel</Button>
+        </div>
+      </Modal>
+
+      {/* Import modal */}
+      <Modal open={!!importData} onClose={() => setImportData(null)}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
+          <div>
+            <div style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-body)", fontWeight: 500, color: "var(--color-text-display)", marginBottom: "var(--space-1)" }}>
+              Import {importData?.name}
+            </div>
+            <div style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-disabled)", letterSpacing: "0.05em" }}>
+              {importData?.accounts.length ?? 0} {(importData?.accounts.length ?? 0) === 1 ? "ACCOUNT" : "ACCOUNTS"}
+            </div>
+          </div>
+          <Input
+            type="password"
+            label="Vault password"
+            value={importPassword}
+            onChange={(e) => { setImportPassword(e.target.value); setImportError(""); }}
+            onKeyDown={(e) => e.key === "Enter" && doImport()}
+            error={importError}
+            placeholder="••••••••••"
+            autoFocus
+          />
+          <Button onClick={doImport} loading={importLoading} disabled={!importPassword}>Import vault</Button>
+          <Button variant="ghost" shape="sharp" size="md" style={{ width: "auto", margin: "0 auto" }} onClick={() => setImportData(null)}>Cancel</Button>
         </div>
       </Modal>
 
