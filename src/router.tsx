@@ -33,6 +33,11 @@ const CreateVaultScreen = lazy(() => import("@/screens/setup/create-vault-screen
 const ImportVaultScreen = lazy(() => import("@/screens/setup/import-vault-screen"));
 const DashboardScreen = lazy(() => import("@/screens/dashboard/dashboard-screen"));
 const VaultsScreen = lazy(() => import("@/screens/vaults/vaults-screen"));
+const VaultDetailScreen = lazy(() => import("@/screens/vaults/vault-detail-screen"));
+const SendScreen = lazy(() => import("@/screens/send/send-screen"));
+const ReceiveScreen = lazy(() => import("@/screens/receive/receive-screen"));
+const HistoryScreen = lazy(() => import("@/screens/history/history-screen"));
+const ContactsScreen = lazy(() => import("@/screens/contacts/contacts-screen"));
 
 export const router = createHashRouter([
   { path: "/", element: <Screen component={RootScreen} /> },
@@ -42,4 +47,9 @@ export const router = createHashRouter([
   { path: "/setup/import", element: <Screen component={ImportVaultScreen} /> },
   { path: "/dashboard", element: <Screen component={DashboardScreen} /> },
   { path: "/vaults", element: <Screen component={VaultsScreen} /> },
+  { path: "/vaults/:id", element: <Screen component={VaultDetailScreen} /> },
+  { path: "/send", element: <Screen component={SendScreen} /> },
+  { path: "/receive", element: <Screen component={ReceiveScreen} /> },
+  { path: "/history", element: <Screen component={HistoryScreen} /> },
+  { path: "/contacts", element: <Screen component={ContactsScreen} /> },
 ]);

@@ -21,6 +21,7 @@
     "@tauri-apps/plugin-store": "^2.4.3",
     "lucide-react": "^1.16.0",
     "motion": "^12.39.0",
+    "qrcode.react": "^4.2.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-hook-form": "^7.76.0",
