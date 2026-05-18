@@ -28,6 +28,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::reset_activity_timer,
             commands::set_lock_timeout,
+            commands::set_lock_on_sleep,
             commands::force_lock,
             commands::get_pending_request,
             commands::clear_pending_request,
