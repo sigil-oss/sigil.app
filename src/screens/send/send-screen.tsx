@@ -26,6 +26,8 @@ export default function SendScreen() {
   const settings = usePersistedStore((s) => s.settings);
   const vault = usePersistedStore((s) => s.vaults.find((v) => v.id === s.settings.activeVaultId));
   const contacts = usePersistedStore((s) => s.contacts);
+  const addContact = usePersistedStore((s) => s.addContact);
+  const addPendingTx = usePersistedStore((s) => s.addPendingTx);
   const wallets = useSessionStore((s) => s.wallets);
 
   const wallet = wallets[settings.activeAccountIndex] ?? null;
@@ -38,18 +40,22 @@ export default function SendScreen() {
   const [amountError, setAmountError] = useState("");
   const [txHash, setTxHash] = useState("");
   const [txError, setTxError] = useState("");
+  const [savedTargetTick, setSavedTargetTick] = useState(0);
+
+  // Save-contact state shown in done step
+  const [saveName, setSaveName] = useState("");
+  const [saved, setSaved] = useState(false);
 
   const accountName = vault?.accounts[settings.activeAccountIndex]?.name ?? "Account";
   const identity = wallet?.identity ?? "";
 
-  const matchedContact = contacts.find(
-    (c) => c.identity === destination.trim().toUpperCase(),
-  );
+  const destUpper = destination.trim().toUpperCase();
+  const matchedContact = contacts.find((c) => c.identity === destUpper);
+  const destIsKnownContact = !!matchedContact;
 
   function validateInputs(): boolean {
     let ok = true;
-    const dest = destination.trim().toUpperCase();
-    if (!isIdentity(dest)) {
+    if (!isIdentity(destUpper)) {
       setDestError("INVALID IDENTITY");
       ok = false;
     } else {
@@ -73,7 +79,7 @@ export default function SendScreen() {
     if (!wallet || !tickInfo) return;
     setStep("sending");
     try {
-      const dest = destination.trim().toUpperCase() as Parameters<typeof wallet.buildTransfer>[0]["destination"];
+      const dest = destUpper as Parameters<typeof wallet.buildTransfer>[0]["destination"];
       const amount = BigInt(Math.round(Number(amountStr.trim())));
       const targetTick = estimateTargetTick(tickInfo.tick ?? 0, 10);
 
@@ -87,12 +93,35 @@ export default function SendScreen() {
       const result = await getRpcClient().live.broadcastTransaction(encoded);
       if (!result.ok) throw result.error;
 
+      addPendingTx({
+        hash,
+        source: identity,
+        destination: dest,
+        amount: amount.toString(),
+        targetTick,
+        broadcastAt: Date.now(),
+      });
+
+      setSavedTargetTick(targetTick);
       setTxHash(hash);
       setStep("done");
     } catch (e) {
       setTxError(e instanceof Error ? e.message : "Broadcast failed.");
       setStep("error");
     }
+  }
+
+  function doSaveContact() {
+    if (!saveName.trim()) return;
+    addContact({
+      id: globalThis.crypto.randomUUID(),
+      name: saveName.trim(),
+      identity: destUpper,
+      note: "",
+      addedAt: Date.now(),
+      lastUsedAt: Date.now(),
+    });
+    setSaved(true);
   }
 
   const statusBar = (
@@ -161,7 +190,7 @@ export default function SendScreen() {
 
           <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
             <ReviewRow label="From" value={`${accountName} · ${truncate(identity)}`} />
-            <ReviewRow label="To" value={matchedContact ? `${matchedContact.name} · ${truncate(destination.trim().toUpperCase())}` : truncate(destination.trim().toUpperCase())} />
+            <ReviewRow label="To" value={matchedContact ? `${matchedContact.name} · ${truncate(destUpper)}` : truncate(destUpper)} />
             <ReviewRow label="Target tick" value={tickInfo ? String(estimateTargetTick(tickInfo.tick ?? 0, 10)) : "—"} />
             <ReviewRow label="Fee" value="None" />
           </div>
@@ -196,6 +225,55 @@ export default function SendScreen() {
               {txHash}
             </div>
           </div>
+          <div>
+            <div style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-disabled)", letterSpacing: "0.05em" }}>
+              TARGET TICK {savedTargetTick} · [PENDING]
+            </div>
+          </div>
+
+          {/* Save-contact prompt */}
+          {!destIsKnownContact && !saved && (
+            <div style={{ borderTop: "1px solid var(--color-border-strong)", paddingTop: "var(--space-4)", display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-secondary)", letterSpacing: "0.05em" }}>
+                SAVE {truncate(destUpper)} TO CONTACTS?
+              </div>
+              <div style={{ display: "flex", gap: "var(--space-2)" }}>
+                <input
+                  value={saveName}
+                  onChange={(e) => setSaveName(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && doSaveContact()}
+                  placeholder="Contact name"
+                  style={{
+                    flex: 1,
+                    background: "var(--color-bg-subtle)",
+                    border: "1px solid var(--color-border-strong)",
+                    borderRadius: "var(--radius-sharp)",
+                    padding: "var(--space-2) var(--space-3)",
+                    fontFamily: "var(--font-sans)",
+                    fontSize: "var(--text-body)",
+                    color: "var(--color-text-display)",
+                    outline: "none",
+                  }}
+                />
+                <Button
+                  variant="secondary"
+                  shape="sharp"
+                  size="sm"
+                  style={{ width: "auto" }}
+                  onClick={doSaveContact}
+                  disabled={!saveName.trim()}
+                >
+                  Save
+                </Button>
+              </div>
+            </div>
+          )}
+          {saved && (
+            <div style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-status-success)", letterSpacing: "0.05em" }}>
+              [CONTACT SAVED]
+            </div>
+          )}
+
           <Button onClick={() => navigate("/dashboard")}>Done</Button>
           <Button variant="ghost" shape="sharp" size="md" style={{ width: "auto", margin: "0 auto" }} onClick={() => navigate("/history")}>
             View history

@@ -59,6 +59,15 @@ export interface Contact {
   lastUsedAt: number;
 }
 
+export interface PendingTx {
+  hash: string;
+  source: string;
+  destination: string;
+  amount: string;
+  targetTick: number;
+  broadcastAt: number;
+}
+
 const DEFAULT_SETTINGS: AppSettings = {
   autoLockMinutes: 15,
   lockOnSleep: true,
@@ -107,6 +116,7 @@ interface PersistedState {
   vaults: VaultMeta[];
   settings: AppSettings;
   contacts: Contact[];
+  pendingTxs: PendingTx[];
   addVault: (vault: VaultMeta) => void;
   updateVault: (id: string, updates: Partial<Omit<VaultMeta, "id">>) => void;
   removeVault: (id: string) => void;
@@ -117,6 +127,8 @@ interface PersistedState {
   addContact: (contact: Contact) => void;
   updateContact: (id: string, updates: Partial<Omit<Contact, "id">>) => void;
   removeContact: (id: string) => void;
+  addPendingTx: (tx: PendingTx) => void;
+  removePendingTx: (hash: string) => void;
 }
 
 export const usePersistedStore = create<PersistedState>()(
@@ -125,6 +137,7 @@ export const usePersistedStore = create<PersistedState>()(
       vaults: [],
       settings: DEFAULT_SETTINGS,
       contacts: [],
+      pendingTxs: [],
 
       addVault: (vault) =>
         set((s) => ({
@@ -174,6 +187,12 @@ export const usePersistedStore = create<PersistedState>()(
 
       removeContact: (id) =>
         set((s) => ({ contacts: s.contacts.filter((c) => c.id !== id) })),
+
+      addPendingTx: (tx) =>
+        set((s) => ({ pendingTxs: [tx, ...s.pendingTxs] })),
+
+      removePendingTx: (hash) =>
+        set((s) => ({ pendingTxs: s.pendingTxs.filter((t) => t.hash !== hash) })),
     }),
     {
       name: "sigil-persisted",

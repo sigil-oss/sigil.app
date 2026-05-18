@@ -1,7 +1,9 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Home, ArrowUp, ArrowDown, Clock, Settings } from "lucide-react";
 import { AppShell } from "@/layouts/app-shell";
+import { Modal } from "@/components/modal";
+import { Tag } from "@/components/tag";
 import { IdentityDisplay } from "@/components/identity-display";
 import { usePersistedStore } from "@/store/persisted";
 import { useSessionStore } from "@/store/session";
@@ -51,8 +53,10 @@ export default function DashboardScreen() {
   const identity = wallet?.identity ?? null;
 
   const { data: balance, isLoading: balanceLoading } = useBalance(identity);
-  const { data: tickInfo } = useTickInfo();
+  const { data: tickInfo, dataUpdatedAt } = useTickInfo();
   const health = useNetworkHealth();
+
+  const [showNetworkOverlay, setShowNetworkOverlay] = useState(false);
 
   useEffect(() => {
     if (isLocked) navigate("/lock", { replace: true });
@@ -78,7 +82,10 @@ export default function DashboardScreen() {
         </span>
       </button>
 
-      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+      <button
+        onClick={() => setShowNetworkOverlay(true)}
+        style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+      >
         <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-disabled)", letterSpacing: "0.05em" }}>
           TICK #{padTick(tickInfo?.tick)}
         </span>
@@ -88,7 +95,7 @@ export default function DashboardScreen() {
             background: HEALTH_COLOR[health],
           }}
         />
-      </div>
+      </button>
     </div>
   );
 
@@ -198,6 +205,39 @@ export default function DashboardScreen() {
         </div>
 
       </div>
+
+      {/* Network health overlay */}
+      <Modal open={showNetworkOverlay} onClose={() => setShowNetworkOverlay(false)}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-label)", fontWeight: 500, color: "var(--color-text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              Network
+            </span>
+            <Tag variant={health === "healthy" ? "success" : health === "degraded" ? "warning" : "error"}>
+              {health.toUpperCase()}
+            </Tag>
+          </div>
+          <NetworkRow label="RPC" value={settings.network.liveApiUrl} />
+          <NetworkRow label="Tick" value={tickInfo?.tick ? `#${padTick(tickInfo.tick)}` : "—"} />
+          <NetworkRow
+            label="Updated"
+            value={dataUpdatedAt ? new Date(dataUpdatedAt).toLocaleTimeString() : "—"}
+          />
+        </div>
+      </Modal>
     </AppShell>
+  );
+}
+
+function NetworkRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      <span style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-label)", fontWeight: 500, color: "var(--color-text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+        {label}
+      </span>
+      <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-primary)", letterSpacing: "0.05em", wordBreak: "break-all" }}>
+        {value}
+      </span>
+    </div>
   );
 }
