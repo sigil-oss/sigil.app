@@ -5,6 +5,11 @@
     "": {
       "name": "sigil",
       "dependencies": {
+        "@qubic.org/crypto": "^0.2.7",
+        "@qubic.org/rpc": "^0.2.7",
+        "@qubic.org/tx": "^0.2.7",
+        "@qubic.org/types": "^0.2.7",
+        "@qubic.org/wallet": "^0.2.7",
         "@tanstack/react-query": "^5.100.10",
         "@tauri-apps/api": "^2",
         "@tauri-apps/plugin-opener": "^2",
@@ -129,6 +134,18 @@
     "@jridgewell/sourcemap-codec": ["@jridgewell/sourcemap-codec@1.5.5", "", {}, "sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og=="],
 
     "@jridgewell/trace-mapping": ["@jridgewell/trace-mapping@0.3.31", "", { "dependencies": { "@jridgewell/resolve-uri": "^3.1.0", "@jridgewell/sourcemap-codec": "^1.4.14" } }, "sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw=="],
+
+    "@noble/hashes": ["@noble/hashes@2.2.0", "", {}, "sha512-IYqDGiTXab6FniAgnSdZwgWbomxpy9FtYvLKs7wCUs2a8RkITG+DFGO1DM9cr+E3/RgADRpFjrKVaJ1z6sjtEg=="],
+
+    "@qubic.org/crypto": ["@qubic.org/crypto@0.2.7", "", { "dependencies": { "@noble/hashes": "^2.2.0", "@qubic.org/types": "^0.2.1" } }, "sha512-LZp9E/fijnfAbZ8ZjBxpGOyNxk/P2bJtB1pGpZ3995YEfKPSO0F71Q/9TQNSkMIYC8ILDshsCexrc7n/Y+QQrw=="],
+
+    "@qubic.org/rpc": ["@qubic.org/rpc@0.2.7", "", { "dependencies": { "@qubic.org/types": "^0.2.1", "openapi-fetch": "^0.17.0" } }, "sha512-TBfwVzzTnqNYIHcwA3hLLN+n0Deppn10sIdYVMkoE+d4wIJv5Xbsw4LU1VzCcoOMUX2FZ0MQeiHWP1MSGaI6Fw=="],
+
+    "@qubic.org/tx": ["@qubic.org/tx@0.2.7", "", { "dependencies": { "@qubic.org/crypto": "^0.2.1", "@qubic.org/types": "^0.2.1" } }, "sha512-Hg5YyIRiTYymKVP5LYrC5gyOWZPfNnluQBu2y7VeOlj29Dala/iOKGFTvuwHPQgp95GuUGwGjHG54lNzipSWQQ=="],
+
+    "@qubic.org/types": ["@qubic.org/types@0.2.7", "", {}, "sha512-rziCgcD6DD1zC6uIEPtwnKPkn/hVdKyAwrcITJB9+Vyl/SLI6pLbCFv2hzEqvCt5gVI7sYzN7VpurU0fB+dveQ=="],
+
+    "@qubic.org/wallet": ["@qubic.org/wallet@0.2.7", "", { "dependencies": { "@qubic.org/crypto": "^0.2.1", "@qubic.org/tx": "^0.2.1", "@qubic.org/types": "^0.2.1" } }, "sha512-Vyx8iup78RJXvA6UZZ6MBEagyou6lbkNdrKNMFGK9gvhEAprfa2d3NeVafxO8CQp22vvm79Zf2YSFwnB0Nx/Hw=="],
 
     "@rolldown/pluginutils": ["@rolldown/pluginutils@1.0.0-beta.27", "", {}, "sha512-+d0F4MKMCbeVUJwG96uQ4SgAznZNSq93I3V+9NHA4OpvqG8mRCpGdKmK8l/dl02h2CCDHwW2FqilnTyDcAnqjA=="],
 
@@ -343,6 +360,10 @@
     "nanoid": ["nanoid@3.3.12", "", { "bin": { "nanoid": "bin/nanoid.cjs" } }, "sha512-ZB9RH/39qpq5Vu6Y+NmUaFhQR6pp+M2Xt76XBnEwDaGcVAqhlvxrl3B2bKS5D3NH3QR76v3aSrKaF/Kiy7lEtQ=="],
 
     "node-releases": ["node-releases@2.0.44", "", {}, "sha512-5WUyunoPMsvvEhS8AxHtRzP+oA8UCkJ7YRxatWKjngndhDGLiqEVAQKWjFAiAiuL8zMRGzGSJxFnLetoa43qGQ=="],
+
+    "openapi-fetch": ["openapi-fetch@0.17.0", "", { "dependencies": { "openapi-typescript-helpers": "^0.1.0" } }, "sha512-PsbZR1wAPcG91eEthKhN+Zn92FMHxv+/faECIwjXdxfTODGSGegYv0sc1Olz+HYPvKOuoXfp+0pA2XVt2cI0Ig=="],
+
+    "openapi-typescript-helpers": ["openapi-typescript-helpers@0.1.0", "", {}, "sha512-OKTGPthhivLw/fHz6c3OPtg72vi86qaMlqbJuVJ23qOvQ+53uw1n7HdmkJFibloF7QEjDrDkzJiOJuockM/ljw=="],
 
     "picocolors": ["picocolors@1.1.1", "", {}, "sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA=="],
 
