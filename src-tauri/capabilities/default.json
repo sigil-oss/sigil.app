@@ -5,6 +5,18 @@
   "windows": ["main"],
   "permissions": [
     "core:default",
-    "opener:default"
+    "opener:default",
+    "store:allow-get",
+    "store:allow-set",
+    "store:allow-load",
+    "store:allow-save",
+    "store:allow-delete",
+    "store:allow-keys",
+    "store:allow-entries",
+    "store:allow-clear",
+    "deep-link:default",
+    "clipboard-manager:allow-read-text",
+    "clipboard-manager:allow-write-text",
+    "notification:default"
   ]
 }
