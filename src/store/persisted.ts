@@ -130,6 +130,8 @@ interface PersistedState {
   addPendingTx: (tx: PendingTx) => void;
   removePendingTx: (hash: string) => void;
   approveDapp: (dapp: ApprovedDapp) => void;
+  revokeDapp: (origin: string) => void;
+  revokeDappPermission: (origin: string, permission: ApprovedDapp["permissions"][number]) => void;
 }
 
 export const usePersistedStore = create<PersistedState>()(
@@ -207,6 +209,26 @@ export const usePersistedStore = create<PersistedState>()(
             : [...s.settings.approvedDapps, dapp];
           return { settings: { ...s.settings, approvedDapps } };
         }),
+
+      revokeDapp: (origin) =>
+        set((s) => ({
+          settings: {
+            ...s.settings,
+            approvedDapps: s.settings.approvedDapps.filter((d) => d.origin !== origin),
+          },
+        })),
+
+      revokeDappPermission: (origin, permission) =>
+        set((s) => ({
+          settings: {
+            ...s.settings,
+            approvedDapps: s.settings.approvedDapps.map((d) =>
+              d.origin === origin
+                ? { ...d, permissions: d.permissions.filter((p) => p !== permission) }
+                : d
+            ),
+          },
+        })),
     }),
     {
       name: "sigil-persisted",
