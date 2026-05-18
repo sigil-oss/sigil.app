@@ -22,6 +22,11 @@ pub fn set_lock_on_sleep(enabled: bool, state: State<'_, AutoLockState>) {
 }
 
 #[tauri::command]
+pub fn get_seconds_until_lock(state: State<'_, AutoLockState>) -> Option<u64> {
+    state.seconds_until_lock()
+}
+
+#[tauri::command]
 pub fn force_lock(app: AppHandle) {
     app.emit("sigil:lock", ()).ok();
 }
