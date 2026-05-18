@@ -41,6 +41,7 @@ const ContactsScreen = lazy(() => import("@/screens/contacts/contacts-screen"));
 const RequestScreen = lazy(() => import("@/screens/request/request-screen"));
 const SettingsScreen = lazy(() => import("@/screens/settings/settings-screen"));
 const DappsScreen = lazy(() => import("@/screens/settings/dapps-screen"));
+const SecurityScreen = lazy(() => import("@/screens/settings/security-screen"));
 
 export const router = createHashRouter([
   { path: "/", element: <Screen component={RootScreen} /> },
@@ -58,4 +59,5 @@ export const router = createHashRouter([
   { path: "/request", element: <Screen component={RequestScreen} /> },
   { path: "/settings", element: <Screen component={SettingsScreen} /> },
   { path: "/settings/dapps", element: <Screen component={DappsScreen} /> },
+  { path: "/settings/security", element: <Screen component={SecurityScreen} /> },
 ]);
