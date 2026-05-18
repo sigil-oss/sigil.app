@@ -8,6 +8,7 @@ import { Divider } from "@/components/divider";
 import { RequestHeader } from "@/components/request/request-header";
 import { TransferPreview, type ApproveResult } from "@/components/request/transfer-preview";
 import { ScCallPreview } from "@/components/request/sc-call-preview";
+import { SignMessagePreview, type SignMessageApproveResult } from "@/components/request/sign-message-preview";
 import { usePersistedStore } from "@/store/persisted";
 import { useSessionStore } from "@/store/session";
 import { useAutoLock } from "@/hooks/use-auto-lock";
@@ -44,7 +45,8 @@ const TYPE_LABEL: Record<string, string> = {
 type CallbackStatus = "pending" | "ok" | "failed";
 
 interface SuccessState {
-  txHash: string;
+  kind: "tx" | "message";
+  detail: string; // tx hash for tx, base64 signature for message
   dappName: string;
   callbackStatus: CallbackStatus;
   callbackBody: string;
@@ -66,7 +68,6 @@ export default function RequestScreen() {
   }, [envelope, success, navigate]);
 
   function reject() {
-    // POST rejected callback if there's a callback URL
     if (envelope?.callback) {
       const body = JSON.stringify({
         status: "rejected",
@@ -78,6 +79,19 @@ export default function RequestScreen() {
     }
     setPendingRequest(null);
     navigate("/dashboard", { replace: true });
+  }
+
+  async function postCallback(callbackBody: string) {
+    if (envelope?.callback) {
+      try {
+        await invoke("post_callback", { url: envelope.callback, body: callbackBody });
+        setSuccess((s) => s ? { ...s, callbackStatus: "ok" } : s);
+      } catch {
+        setSuccess((s) => s ? { ...s, callbackStatus: "failed" } : s);
+      }
+    } else {
+      setSuccess((s) => s ? { ...s, callbackStatus: "ok" } : s);
+    }
   }
 
   async function handleApprove({ txHash, targetTick, identity }: ApproveResult) {
@@ -94,27 +108,45 @@ export default function RequestScreen() {
 
     setPendingRequest(null);
     const state: SuccessState = {
-      txHash,
+      kind: "tx",
+      detail: txHash,
       dappName: envelope.request.dapp.name,
       callbackStatus: "pending",
       callbackBody,
     };
     setSuccess(state);
+    await postCallback(callbackBody);
+  }
 
-    if (envelope.callback) {
-      try {
-        await invoke("post_callback", { url: envelope.callback, body: callbackBody });
-        setSuccess((s) => s ? { ...s, callbackStatus: "ok" } : s);
-      } catch {
-        setSuccess((s) => s ? { ...s, callbackStatus: "failed" } : s);
-      }
-    } else {
-      setSuccess((s) => s ? { ...s, callbackStatus: "ok" } : s);
-    }
+  async function handleApproveMessage({ signature, publicKey, identity }: SignMessageApproveResult) {
+    if (!envelope) return;
+
+    const callbackBody = JSON.stringify({
+      status: "signed",
+      nonce: envelope.request.nonce,
+      type: envelope.request.type,
+      identity,
+      signature,
+      public_key: publicKey,
+    });
+
+    setPendingRequest(null);
+    const state: SuccessState = {
+      kind: "message",
+      detail: signature,
+      dappName: envelope.request.dapp.name,
+      callbackStatus: "pending",
+      callbackBody,
+    };
+    setSuccess(state);
+    await postCallback(callbackBody);
   }
 
   // ── Success screen ──
   if (success) {
+    const detailLabel = success.kind === "tx" ? "Transaction hash" : "Signature";
+    const tagLabel = success.kind === "tx" ? "SENT" : "SIGNED";
+
     return (
       <AppShell
         statusBar={
@@ -127,15 +159,15 @@ export default function RequestScreen() {
         contentStyle={{ padding: "var(--space-6)", display: "flex", flexDirection: "column", gap: "var(--space-6)" }}
       >
         <div style={{ textAlign: "center" }}>
-          <Tag variant="success">SENT</Tag>
+          <Tag variant="success">{tagLabel}</Tag>
         </div>
 
         <div>
           <div style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-label)", fontWeight: 500, color: "var(--color-text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "var(--space-2)" }}>
-            Transaction hash
+            {detailLabel}
           </div>
           <div style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-primary)", letterSpacing: "0.05em", wordBreak: "break-all" }}>
-            {success.txHash}
+            {success.detail}
           </div>
         </div>
 
@@ -208,6 +240,12 @@ export default function RequestScreen() {
         <ScCallPreview
           request={request as unknown as Parameters<typeof ScCallPreview>[0]["request"]}
           onApprove={handleApprove}
+          onReject={reject}
+        />
+      ) : request.type === "sign_message" ? (
+        <SignMessagePreview
+          request={request as unknown as Parameters<typeof SignMessagePreview>[0]["request"]}
+          onApprove={handleApproveMessage}
           onReject={reject}
         />
       ) : (
