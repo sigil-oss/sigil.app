@@ -81,17 +81,14 @@ export default function RootScreen() {
 
   useEffect(() => {
     if (!hydrated) return;
-    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
-    const lastUnlocked = vaults.reduce((max, v) => Math.max(max, v.lastUnlockedAt ?? 0), 0);
-    const hasRecentActivity = lastUnlocked > 0 && Date.now() - lastUnlocked < sevenDaysMs;
-    if (vaults.length === 0 || !hasRecentActivity) {
+    if (vaults.length === 0) {
       navigate("/setup", { replace: true });
     } else if (isLocked) {
       navigate("/lock", { replace: true });
     } else {
       navigate("/dashboard", { replace: true });
     }
-  }, [hydrated, vaults, isLocked, navigate]);
+  }, [hydrated, vaults.length, isLocked, navigate]);
 
   return <LoadingSkeleton />;
 }
