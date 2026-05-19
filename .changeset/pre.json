@@ -4,5 +4,7 @@
   "initialVersions": {
     "sigil": "0.1.0"
   },
-  "changesets": []
+  "changesets": [
+    "fix-loading-binary-conflict"
+  ]
 }
