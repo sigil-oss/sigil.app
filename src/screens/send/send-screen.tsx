@@ -107,7 +107,7 @@ export default function SendScreen() {
     setStep("sending");
     try {
       const dest = destUpper as Parameters<typeof wallet.buildTransfer>[0]["destination"];
-      const amount = BigInt(Math.round(Number(amountStr.trim())));
+      const amount = BigInt(amountStr.trim());
       const targetTick = estimateTargetTick(tickInfo.tick ?? 0, settings.tickOffset);
 
       const { encoded, hash } = await wallet.buildTransfer({

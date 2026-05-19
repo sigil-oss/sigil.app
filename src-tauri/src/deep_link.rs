@@ -1,5 +1,6 @@
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use serde_json::Value;
+use std::collections::HashSet;
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Emitter, Manager};
@@ -8,32 +9,49 @@ use url::Url;
 
 pub struct DeepLinkState {
     pending_request: Arc<Mutex<Option<String>>>,
+    seen_nonces: Arc<Mutex<HashSet<String>>>,
 }
 
 impl Default for DeepLinkState {
     fn default() -> Self {
         Self {
             pending_request: Arc::new(Mutex::new(None)),
+            seen_nonces: Arc::new(Mutex::new(HashSet::new())),
         }
     }
 }
 
 impl DeepLinkState {
     pub fn store(&self, payload: String) {
-        *self.pending_request.lock().unwrap() = Some(payload);
+        *self.pending_request.lock().unwrap_or_else(|e| e.into_inner()) = Some(payload);
     }
 
     pub fn take(&self) -> Option<String> {
-        self.pending_request.lock().unwrap().take()
+        self.pending_request.lock().unwrap_or_else(|e| e.into_inner()).take()
     }
 
     pub fn peek(&self) -> Option<String> {
-        self.pending_request.lock().unwrap().clone()
+        self.pending_request.lock().unwrap_or_else(|e| e.into_inner()).clone()
+    }
+
+    /// Returns false if the nonce was already seen (replay), true if it is fresh.
+    pub fn record_nonce(&self, nonce: &str) -> bool {
+        let mut seen = self.seen_nonces.lock().unwrap_or_else(|e| e.into_inner());
+        if seen.contains(nonce) {
+            return false;
+        }
+        // Bound memory growth; clear after a large accumulation
+        if seen.len() > 2000 {
+            seen.clear();
+        }
+        seen.insert(nonce.to_string());
+        true
     }
 }
 
 struct ParsedRequest {
     request: Value,
+    nonce: String,
     callback: Option<String>,
 }
 
@@ -86,8 +104,8 @@ fn validate(uri_str: &str) -> Result<ParsedRequest, String> {
     }
 
     let nonce = value["nonce"].as_str().ok_or("missing 'nonce' field")?;
-    if nonce.len() < 8 {
-        return Err("nonce too short (min 8 chars)".into());
+    if nonce.len() < 8 || nonce.len() > 128 {
+        return Err("nonce must be 8–128 characters".into());
     }
 
     let dapp_origin = value["dapp"]["origin"]
@@ -102,14 +120,23 @@ fn validate(uri_str: &str) -> Result<ParsedRequest, String> {
         }
     }
 
+    // Validate callback URL if present
+    if let Some(cb) = &cb_param {
+        let cb_url = Url::parse(cb).map_err(|_| "invalid callback URL".to_string())?;
+        if cb_url.scheme() != "https" {
+            return Err("callback URL must use HTTPS".into());
+        }
+    }
+
     // Type-specific checks
     match req_type {
         "transfer" => {
             let to = value["to"].as_str().ok_or("transfer: missing 'to'")?;
-            if to.len() != 60 {
+            // Qubic identities are exactly 60 uppercase A-Z characters
+            if to.len() != 60 || !to.bytes().all(|b| b.is_ascii_uppercase()) {
                 return Err(format!(
-                    "transfer: 'to' must be 60 chars, got {}",
-                    to.len()
+                    "transfer: 'to' must be 60 uppercase letters, got '{}'",
+                    &to[..to.len().min(8)]
                 ));
             }
             let amount = value["amount"].as_i64().ok_or("transfer: missing 'amount'")?;
@@ -144,6 +171,7 @@ fn validate(uri_str: &str) -> Result<ParsedRequest, String> {
     }
 
     Ok(ParsedRequest {
+        nonce: nonce.to_string(),
         request: value,
         callback: cb_param,
     })
@@ -162,12 +190,19 @@ pub fn register_handler(app: &AppHandle) {
 
             match validate(&raw) {
                 Ok(parsed) => {
+                    let state = handle.state::<DeepLinkState>();
+
+                    // Reject replayed nonces within this session
+                    if !state.record_nonce(&parsed.nonce) {
+                        eprintln!("[sigil] deep link rejected: duplicate nonce '{}'", parsed.nonce);
+                        continue;
+                    }
+
                     let envelope = serde_json::json!({
                         "request": parsed.request,
                         "callback": parsed.callback,
                     });
                     let payload = envelope.to_string();
-                    let state = handle.state::<DeepLinkState>();
                     state.store(payload.clone());
                     handle.emit("sigil:request", payload).ok();
                 }

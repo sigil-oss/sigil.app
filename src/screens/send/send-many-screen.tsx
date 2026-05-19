@@ -21,6 +21,7 @@ import { QUTIL_ADDRESS, Q_UTIL_SEND_TO_MANY_V1_INPUT_TYPE, qUtilGetSendToManyV1F
 const MAX_RECIPIENTS = 25;
 
 interface Recipient {
+  id: string;
   identity: string;
   amount: string;
   identityError: string;
@@ -34,7 +35,7 @@ function truncate(id: string) {
 }
 
 function emptyRecipient(): Recipient {
-  return { identity: "", amount: "", identityError: "", amountError: "" };
+  return { id: globalThis.crypto.randomUUID(), identity: "", amount: "", identityError: "", amountError: "" };
 }
 
 export default function SendManyScreen() {
@@ -117,13 +118,13 @@ export default function SendManyScreen() {
       }
       for (let i = 0; i < MAX_RECIPIENTS; i++) {
         if (i < recipients.length) {
-          fields.push({ type: "uint64", value: BigInt(Math.round(Number(recipients[i].amount.trim()))) });
+          fields.push({ type: "uint64", value: BigInt(recipients[i].amount.trim()) });
         } else {
           fields.push({ type: "uint64", value: 0n });
         }
       }
       const payload = buildPayload(fields);
-      const total = BigInt(Math.round(totalAmount)) + (fee ?? 0n);
+      const total = recipients.reduce((s, r) => s + BigInt(r.amount.trim()), 0n) + (fee ?? 0n);
 
       const { encoded, hash } = await wallet.buildScTransaction({
         destination: QUTIL_ADDRESS,
@@ -185,7 +186,7 @@ export default function SendManyScreen() {
         <>
           <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
             {recipients.map((r, i) => (
-              <div key={i} style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)", padding: "var(--space-3)", border: "1px solid var(--color-border-strong)", borderRadius: "var(--radius-sharp)" }}>
+              <div key={r.id} style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)", padding: "var(--space-3)", border: "1px solid var(--color-border-strong)", borderRadius: "var(--radius-sharp)" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-disabled)", letterSpacing: "0.05em" }}>
                     RECIPIENT {i + 1}
@@ -243,7 +244,7 @@ export default function SendManyScreen() {
               </span>
             </div>
             {balance !== null && (() => {
-              const deducted = BigInt(Math.round(totalAmount)) + (fee ?? 0n);
+              const deducted = recipients.reduce((s, r) => s + (r.amount.trim() ? BigInt(r.amount.trim()) : 0n), 0n) + (fee ?? 0n);
               const remaining = balance - deducted;
               const over = remaining < 0n;
               return (
@@ -269,11 +270,11 @@ export default function SendManyScreen() {
               <span style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-label)", fontWeight: 500, color: "var(--color-text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>To</span>
               <span style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-label)", fontWeight: 500, color: "var(--color-text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Amount</span>
             </div>
-            {recipients.map((r, i) => {
+            {recipients.map((r) => {
               const id = r.identity.trim().toUpperCase();
               const contact = contacts.find((c) => c.identity === id);
               return (
-                <div key={i}>
+                <div key={r.id}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "var(--space-4)" }}>
                     <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-primary)", letterSpacing: "0.05em" }}>
                       {contact ? `${contact.name} · ${truncate(id)}` : truncate(id)}

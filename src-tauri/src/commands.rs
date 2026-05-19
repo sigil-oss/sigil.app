@@ -59,15 +59,40 @@ pub fn clear_clipboard(app: AppHandle, clip_state: State<'_, ClipboardState>) {
     clip_state.cancel_clear();
 }
 
+fn is_private_host(host: &str) -> bool {
+    matches!(host, "localhost" | "::1")
+        || host.starts_with("127.")
+        || host.starts_with("10.")
+        || host.starts_with("169.254.")
+        || host.starts_with("192.168.")
+        || host.starts_with("172.")
+            && host
+                .split('.')
+                .nth(1)
+                .and_then(|s| s.parse::<u8>().ok())
+                .map(|n| (16..=31).contains(&n))
+                .unwrap_or(false)
+}
+
 #[tauri::command]
 pub async fn post_callback(url: String, body: String) -> Result<(), String> {
+    let parsed = url::Url::parse(&url).map_err(|_| "invalid callback URL".to_string())?;
+
+    if parsed.scheme() != "https" {
+        return Err("callback URL must use HTTPS".into());
+    }
+    let host = parsed.host_str().ok_or("callback URL has no host")?;
+    if is_private_host(host) {
+        return Err("callback URL must not target a private or loopback address".into());
+    }
+
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(10))
         .build()
         .map_err(|e| e.to_string())?;
 
     client
-        .post(&url)
+        .post(parsed)
         .header("Content-Type", "application/json")
         .body(body)
         .send()

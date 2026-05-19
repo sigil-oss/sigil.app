@@ -68,6 +68,32 @@ export default function RequestScreen() {
     if (!envelope && !success) navigate("/dashboard", { replace: true });
   }, [envelope, success, navigate]);
 
+  // Enforce dApp permissions: if origin is already approved but lacks the
+  // required permission for this request type, auto-reject immediately.
+  useEffect(() => {
+    if (!envelope || success) return;
+    const { type: reqType, dapp, nonce } = envelope.request;
+    if (reqType === "connect") return;
+
+    const approval = approvedDapps.find((d) => d.origin === dapp.origin);
+    if (!approval) return; // unknown dApp — let user review
+
+    const needed = reqType as "transfer" | "sc_call" | "sign_message";
+    if (!approval.permissions.includes(needed)) {
+      const body = JSON.stringify({
+        status: "rejected",
+        nonce,
+        type: reqType,
+        reason: "permission_denied",
+      });
+      if (envelope.callback) {
+        invoke("post_callback", { url: envelope.callback, body }).catch(() => {});
+      }
+      setPendingRequest(null);
+      navigate("/dashboard", { replace: true });
+    }
+  }, [envelope, approvedDapps, success, navigate, setPendingRequest]);
+
   function reject() {
     if (envelope?.callback) {
       const body = JSON.stringify({

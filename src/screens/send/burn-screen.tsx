@@ -44,7 +44,7 @@ export default function BurnScreen() {
     if (!wallet || !tickInfo) return;
     setStep("sending");
     try {
-      const amount = BigInt(Math.round(Number(amountStr.trim())));
+      const amount = BigInt(amountStr.trim());
       const targetTick = estimateTargetTick(tickInfo.tick ?? 0, settings.tickOffset);
 
       const { inputType, payload } = buildQUtilBurnQubicInput({ amount });
