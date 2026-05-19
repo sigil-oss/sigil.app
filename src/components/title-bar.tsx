@@ -51,6 +51,7 @@ export function TitleBar() {
   useEffect(() => {
     win.isMaximized().then(setMaximized);
     const unlisten = win.listen("tauri://resize", async () => {
+      if (await win.isFullscreen()) await win.setFullscreen(false);
       setMaximized(await win.isMaximized());
     });
     return () => { unlisten.then((f) => f()); };
