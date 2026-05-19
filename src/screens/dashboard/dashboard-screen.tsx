@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { animate } from "motion/react";
 import { Home, ArrowUp, ArrowDown, Clock, Settings, Eye, EyeOff } from "lucide-react";
 import { AppShell } from "@/layouts/app-shell";
@@ -10,6 +11,7 @@ import { usePersistedStore } from "@/store/persisted";
 import { useSessionStore } from "@/store/session";
 import { useBalance } from "@/hooks/use-balance";
 import { useTickInfo } from "@/hooks/use-tick-info";
+import { useLastProcessedTick } from "@/hooks/use-last-processed-tick";
 import { useNetworkHealth } from "@/hooks/use-network-health";
 import { useAutoLock } from "@/hooks/use-auto-lock";
 import { useTxHistory } from "@/hooks/use-tx-history";
@@ -239,7 +241,7 @@ export default function DashboardScreen() {
         )}
 
         {/* Recent transactions */}
-        <RecentTxs identity={identity} activeIdentity={identity} hideBalances={settings.hideBalances} currentTick={tickInfo?.tick ?? 0} onViewAll={() => navigate("/history")} />
+        <RecentTxs identity={identity} activeIdentity={identity} hideBalances={settings.hideBalances} onViewAll={() => navigate("/history")} />
 
         {/* Utility shortcuts */}
         <div style={{ display: "flex", justifyContent: "center", gap: "var(--space-6)" }}>
@@ -290,27 +292,38 @@ interface RecentTxsProps {
   identity: string | null;
   activeIdentity: string | null;
   hideBalances: boolean;
-  currentTick: number;
   onViewAll: () => void;
 }
 
-function RecentTxs({ identity, activeIdentity, hideBalances, currentTick, onViewAll }: RecentTxsProps) {
+function RecentTxs({ identity, activeIdentity, hideBalances, onViewAll }: RecentTxsProps) {
   const { data: txs, isLoading } = useTxHistory(identity);
   const pendingTxs = usePersistedStore((s) => s.pendingTxs);
   const removePendingTx = usePersistedStore((s) => s.removePendingTx);
+  const { data: lastProcessedTickData } = useLastProcessedTick();
+  const queryClient = useQueryClient();
+  const lastProcessedTick = lastProcessedTickData?.tickNumber ?? 0;
 
   const isExpired = (p: { targetTick: number }) =>
-    currentTick > 0 && currentTick > p.targetTick + 30;
+    lastProcessedTick > 0 && lastProcessedTick >= p.targetTick;
 
-  // Cleanup: remove confirmed or definitively expired pending txs
+  // When any pending tx's target tick is processed, immediately refresh history
   useEffect(() => {
-    if (!txs || !currentTick) return;
+    if (!lastProcessedTick || !identity) return;
+    const hasReady = pendingTxs.some(
+      (p) => (p.source === identity || p.destination === identity) && lastProcessedTick >= p.targetTick,
+    );
+    if (hasReady) queryClient.invalidateQueries({ queryKey: ["tx-history", identity] });
+  }, [lastProcessedTick, pendingTxs, identity, queryClient]);
+
+  // Cleanup: confirmed txs remove immediately; expired remove once tick is processed
+  useEffect(() => {
+    if (!txs || !lastProcessedTick) return;
     const fetchedHashes = new Set(txs.map((t) => t.hash).filter(Boolean));
     pendingTxs.forEach((p) => {
       if (fetchedHashes.has(p.hash)) removePendingTx(p.hash);
-      else if (currentTick > p.targetTick + 30) removePendingTx(p.hash);
+      else if (lastProcessedTick >= p.targetTick) removePendingTx(p.hash);
     });
-  }, [txs, pendingTxs, removePendingTx, currentTick]);
+  }, [txs, pendingTxs, removePendingTx, lastProcessedTick]);
 
   const myPending = pendingTxs
     .filter((p) => p.source === activeIdentity || p.destination === activeIdentity)
