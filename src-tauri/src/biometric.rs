@@ -89,12 +89,24 @@ mod platform {
     pub fn authenticate(reason: &str) -> Result<(), String> {
         let reason_w = HSTRING::from(reason);
         let op = UserConsentVerifier::RequestVerificationAsync(&reason_w)
-            .map_err(|e| e.to_string())?;
-        let result = op.get().map_err(|e| e.to_string())?;
+            .map_err(|e| format!("RequestVerificationAsync: {e}"))?;
+        let result = op.get().map_err(|e| format!("IAsyncOperation::get: {e}"))?;
         if result == UserConsentVerificationResult::Verified {
             Ok(())
+        } else if result == UserConsentVerificationResult::Canceled {
+            Err("Canceled".to_string())
+        } else if result == UserConsentVerificationResult::DeviceNotPresent {
+            Err("DeviceNotPresent: no biometric hardware detected".to_string())
+        } else if result == UserConsentVerificationResult::NotConfiguredForUser {
+            Err("NotConfiguredForUser: Windows Hello not set up for this account".to_string())
+        } else if result == UserConsentVerificationResult::DisabledByPolicy {
+            Err("DisabledByPolicy: biometrics disabled by system policy".to_string())
+        } else if result == UserConsentVerificationResult::DeviceBusy {
+            Err("DeviceBusy: biometric device is busy".to_string())
+        } else if result == UserConsentVerificationResult::RetriesExhausted {
+            Err("RetriesExhausted: too many failed attempts".to_string())
         } else {
-            Err("Authentication failed".to_string())
+            Err(format!("UnknownResult({})", result.0))
         }
     }
 }

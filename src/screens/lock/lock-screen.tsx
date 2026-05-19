@@ -70,13 +70,13 @@ export default function LockScreen() {
     try {
       const password = await invoke<string>("biometric_unlock", { vaultId: vault.id });
       await doUnlock(password);
-    } catch {
+    } catch (e) {
       const next = bioFailures + 1;
       setBioFailures(next);
       if (next >= 3) {
         setError("TOO MANY FAILURES — USE PASSWORD");
       } else {
-        setError("BIOMETRIC FAILED");
+        setError(`BIOMETRIC FAILED: ${e}`);
       }
     } finally {
       setLoading(false);
