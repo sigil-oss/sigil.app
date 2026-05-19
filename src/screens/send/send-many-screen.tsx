@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { buildPayload, type PayloadField } from "@qubic.org/tx";
 import type { Identity } from "@qubic.org/types";
@@ -14,7 +15,7 @@ import { useAutoLock } from "@/hooks/use-auto-lock";
 import { useTickInfo } from "@/hooks/use-tick-info";
 import { isValidIdentity } from "@/lib/crypto";
 import { getRpcClient, estimateTargetTick } from "@/lib/rpc";
-import { QUTIL_ADDRESS, Q_UTIL_SEND_TO_MANY_V1_INPUT_TYPE } from "@/lib/contracts";
+import { QUTIL_ADDRESS, Q_UTIL_SEND_TO_MANY_V1_INPUT_TYPE, qUtilGetSendToManyV1Fee } from "@/lib/contracts";
 
 const MAX_RECIPIENTS = 25;
 
@@ -46,6 +47,12 @@ export default function SendManyScreen() {
   const wallets = useSessionStore((s) => s.wallets);
   const wallet = wallets[settings.activeAccountIndex] ?? null;
   const { data: tickInfo } = useTickInfo();
+  const { data: feeData } = useQuery({
+    queryKey: ["qutil-send-many-fee"],
+    queryFn: () => qUtilGetSendToManyV1Fee(getRpcClient().live),
+    staleTime: 60_000,
+  });
+  const fee = feeData?.ok ? feeData.value.fee : null;
 
   const [step, setStep] = useState<Step>("input");
   const [recipients, setRecipients] = useState<Recipient[]>([emptyRecipient()]);
@@ -113,7 +120,7 @@ export default function SendManyScreen() {
         }
       }
       const payload = buildPayload(fields);
-      const total = BigInt(Math.round(totalAmount));
+      const total = BigInt(Math.round(totalAmount)) + (fee ?? 0n);
 
       const { encoded, hash } = await wallet.buildScTransaction({
         destination: QUTIL_ADDRESS,
@@ -258,19 +265,27 @@ export default function SendManyScreen() {
             })}
             <Divider />
             <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-label)", fontWeight: 500, color: "var(--color-text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Total</span>
-              <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-display)", letterSpacing: "0.05em" }}>
+              <span style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-label)", fontWeight: 500, color: "var(--color-text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Transfers</span>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-primary)", letterSpacing: "0.05em" }}>
                 {totalAmount.toLocaleString()} QU
               </span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-label)", fontWeight: 500, color: "var(--color-text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Fee</span>
-              <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-primary)", letterSpacing: "0.05em" }}>None</span>
+              <span style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-label)", fontWeight: 500, color: "var(--color-text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>QUtil fee</span>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-primary)", letterSpacing: "0.05em" }}>
+                {fee !== null ? `${Number(fee).toLocaleString()} QU` : "[LOADING...]"}
+              </span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-label)", fontWeight: 500, color: "var(--color-text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Total</span>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-display)", letterSpacing: "0.05em" }}>
+                {fee !== null ? (totalAmount + Number(fee)).toLocaleString() : "..."} QU
+              </span>
             </div>
           </div>
 
           <Divider />
-          <Button onClick={send}>Sign and send</Button>
+          <Button onClick={send} disabled={fee === null}>Sign and send</Button>
           <Button variant="secondary" shape="sharp" onClick={() => setStep("input")}>Edit</Button>
         </>
       )}
