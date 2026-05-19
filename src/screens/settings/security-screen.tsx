@@ -30,7 +30,7 @@ export default function SecurityScreen() {
   const lockOnWindowBlur = usePersistedStore((s) => s.settings.lockOnWindowBlur);
   const lockOnSleep = usePersistedStore((s) => s.settings.lockOnSleep);
   const clipboardClearSeconds = usePersistedStore((s) => s.settings.clipboardClearSeconds);
-  const biometricVaultIds = usePersistedStore((s) => s.settings.biometricVaultIds);
+  const biometricVaultIds = usePersistedStore((s) => s.settings.biometricVaultIds ?? []);
   const vaults = usePersistedStore((s) => s.vaults);
   const settings = usePersistedStore((s) => s.settings);
   const updateSettings = usePersistedStore((s) => s.updateSettings);
