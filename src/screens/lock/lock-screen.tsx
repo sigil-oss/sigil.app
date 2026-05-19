@@ -36,7 +36,7 @@ export default function LockScreen() {
   const pendingRequest = useSessionStore((s) => s.pendingRequest);
 
   const vault = vaults.find((v) => v.id === settings.activeVaultId) ?? vaults[0];
-  const bioEnabled = vault ? settings.biometricVaultIds.includes(vault.id) : false;
+  const bioEnabled = vault ? (settings.biometricVaultIds ?? []).includes(vault.id) : false;
 
   const { register, handleSubmit } = useForm<FormValues>();
 

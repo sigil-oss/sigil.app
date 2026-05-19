@@ -239,6 +239,15 @@ export const usePersistedStore = create<PersistedState>()(
     {
       name: "sigil-persisted",
       storage: createJSONStorage(() => tauriStorage),
+      // Deep-merge settings so new fields added to DEFAULT_SETTINGS survive rehydration
+      merge: (persistedState: unknown, currentState: PersistedState): PersistedState => {
+        const ps = persistedState as Partial<PersistedState>;
+        return {
+          ...currentState,
+          ...ps,
+          settings: { ...currentState.settings, ...(ps.settings ?? {}) },
+        };
+      },
     },
   ),
 );
