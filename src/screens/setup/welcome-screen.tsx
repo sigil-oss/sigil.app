@@ -6,6 +6,7 @@ import { Input } from "@/components/input";
 import { Modal } from "@/components/modal";
 import { usePersistedStore, type VaultColor, type AccountMeta } from "@/store/persisted";
 import { useSessionStore } from "@/store/session";
+import { AlertTriangle } from "lucide-react";
 import { unlockVault, createWallet, type VaultData } from "@/lib/vault";
 
 interface ImportFileData {
@@ -19,6 +20,7 @@ export default function WelcomeScreen() {
   const navigate = useNavigate();
   const addVault = usePersistedStore((s) => s.addVault);
   const unlock = useSessionStore((s) => s.unlock);
+  const pendingRequest = useSessionStore((s) => s.pendingRequest);
 
   const [importData, setImportData] = useState<ImportFileData | null>(null);
   const [importPw, setImportPw] = useState("");
@@ -80,6 +82,25 @@ export default function WelcomeScreen() {
   return (
     <FullPage>
       <div style={{ width: "100%", maxWidth: 320, display: "flex", flexDirection: "column", gap: "var(--space-8)" }}>
+        {pendingRequest && (
+          <div
+            role="status"
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              gap: "var(--space-3)",
+              padding: "var(--space-3) var(--space-4)",
+              background: "var(--color-bg-elevated)",
+              border: "1px solid var(--color-status-warning)",
+              borderRadius: "var(--radius-sharp)",
+            }}
+          >
+            <AlertTriangle size={14} color="var(--color-status-warning)" style={{ flexShrink: 0, marginTop: 2 }} />
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-status-warning)", letterSpacing: "0.05em", lineHeight: 1.5 }}>
+              A DAPP REQUEST IS WAITING. CREATE OR IMPORT A WALLET TO PROCEED.
+            </span>
+          </div>
+        )}
         <div>
           <div
             style={{

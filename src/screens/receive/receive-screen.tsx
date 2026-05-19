@@ -24,7 +24,7 @@ export default function ReceiveScreen() {
 
   const statusBar = (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-      <button onClick={() => navigate("/dashboard")} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-secondary)", letterSpacing: "0.05em", padding: 0 }}>
+      <button onClick={() => navigate("/dashboard")} aria-label="Go back" style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-secondary)", letterSpacing: "0.05em", padding: 0 }}>
         ← BACK
       </button>
       <span style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-label)", fontWeight: 500, color: "var(--color-text-primary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
@@ -61,6 +61,8 @@ export default function ReceiveScreen() {
               bgColor="transparent"
               fgColor="var(--color-text-display)"
               level="M"
+              aria-label={`QR code for address ${identity}`}
+              role="img"
               style={{ display: "block", filter: hideBalances && !qrRevealed ? "blur(12px)" : "none", transition: "filter 0.15s ease" }}
             />
             {hideBalances && !qrRevealed && (
