@@ -116,6 +116,7 @@ export default function SendManyScreen() {
       const total = BigInt(Math.round(totalAmount));
 
       const { encoded, hash } = await wallet.buildScTransaction({
+        destination: QUTIL.address,
         inputType: QUTIL.SendToManyV1,
         payload,
         amount: total,

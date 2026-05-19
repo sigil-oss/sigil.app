@@ -48,6 +48,7 @@ export default function BurnScreen() {
 
       // BurnQu: amount is passed as the transaction value; no payload needed
       const { encoded, hash } = await wallet.buildScTransaction({
+        destination: QUTIL.address,
         inputType: QUTIL.BurnQu,
         payload: new Uint8Array(0),
         amount,
