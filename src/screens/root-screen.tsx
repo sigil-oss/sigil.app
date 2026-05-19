@@ -35,8 +35,10 @@ export default function RootScreen() {
       style={{
         height: "100%",
         display: "flex",
+        flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
+        gap: "8px",
         fontFamily: "var(--font-mono)",
         fontSize: "var(--text-mono-sm)",
         color: "var(--color-text-disabled)",
@@ -44,6 +46,9 @@ export default function RootScreen() {
       }}
     >
       [LOADING...]
+      <span style={{ fontSize: "10px", opacity: 0.6 }}>
+        hydrated={String(hydrated)} vaults={vaults.length} locked={String(isLocked)}
+      </span>
     </div>
   );
 }
