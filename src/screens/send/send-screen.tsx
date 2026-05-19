@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppShell } from "@/layouts/app-shell";
 import { Button } from "@/components/button";
@@ -9,6 +9,7 @@ import { usePersistedStore } from "@/store/persisted";
 import { useSessionStore } from "@/store/session";
 import { useAutoLock } from "@/hooks/use-auto-lock";
 import { useTickInfo } from "@/hooks/use-tick-info";
+import { useTxHistory } from "@/hooks/use-tx-history";
 import { isIdentity } from "@/lib/crypto";
 import { getRpcClient, estimateTargetTick } from "@/lib/rpc";
 
@@ -41,6 +42,8 @@ export default function SendScreen() {
   const [txHash, setTxHash] = useState("");
   const [txError, setTxError] = useState("");
   const [savedTargetTick, setSavedTargetTick] = useState(0);
+  const [watchConfirmation, setWatchConfirmation] = useState(false);
+  const [watchResult, setWatchResult] = useState<"pending" | "confirmed" | "failed">("pending");
 
   // Save-contact state shown in done step
   const [saveName, setSaveName] = useState("");
@@ -49,9 +52,24 @@ export default function SendScreen() {
   const accountName = vault?.accounts[settings.activeAccountIndex]?.name ?? "Account";
   const identity = wallet?.identity ?? "";
 
+  const { data: recentTxs } = useTxHistory(identity || null);
+
   const destUpper = destination.trim().toUpperCase();
   const matchedContact = contacts.find((c) => c.identity === destUpper);
   const destIsKnownContact = !!matchedContact;
+
+  // Poll for confirmation when user opts in
+  useEffect(() => {
+    if (!watchConfirmation || !txHash || watchResult !== "pending") return;
+    const found = recentTxs?.find((t) => t.hash === txHash);
+    if (found) {
+      setWatchResult(found.moneyFlew === false ? "failed" : "confirmed");
+      return;
+    }
+    if (tickInfo?.tick && savedTargetTick && tickInfo.tick > savedTargetTick + 30) {
+      setWatchResult("failed");
+    }
+  }, [watchConfirmation, txHash, recentTxs, tickInfo, savedTargetTick, watchResult]);
 
   function validateInputs(): boolean {
     let ok = true;
@@ -271,6 +289,44 @@ export default function SendScreen() {
           {saved && (
             <div style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-status-success)", letterSpacing: "0.05em" }}>
               [CONTACT SAVED]
+            </div>
+          )}
+
+          {/* Watch confirmation opt-in */}
+          <div
+            role="checkbox"
+            aria-checked={watchConfirmation}
+            tabIndex={0}
+            onClick={() => { setWatchConfirmation((v) => !v); setWatchResult("pending"); }}
+            onKeyDown={(e) => e.key === " " && (setWatchConfirmation((v) => !v), setWatchResult("pending"))}
+            style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", cursor: "pointer", userSelect: "none" }}
+          >
+            <div style={{
+              width: 14, height: 14, flexShrink: 0,
+              border: `1px solid ${watchConfirmation ? "var(--color-text-display)" : "var(--color-border-strong)"}`,
+              borderRadius: 2,
+              background: watchConfirmation ? "var(--color-text-display)" : "none",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              {watchConfirmation && <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--color-bg-base)", lineHeight: 1 }}>✓</span>}
+            </div>
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-secondary)", letterSpacing: "0.05em" }}>
+              WATCH FOR CONFIRMATION
+            </span>
+          </div>
+
+          {watchConfirmation && (
+            <div style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: "var(--text-mono-sm)",
+              letterSpacing: "0.05em",
+              color: watchResult === "confirmed" ? "var(--color-status-success)"
+                : watchResult === "failed" ? "var(--color-status-error)"
+                : "var(--color-text-disabled)",
+            }}>
+              {watchResult === "pending" && "[WAITING FOR CONFIRMATION...]"}
+              {watchResult === "confirmed" && "[CONFIRMED — MONEY FLEW ✓]"}
+              {watchResult === "failed" && "[FAILED — MONEY DID NOT FLY]"}
             </div>
           )}
 
