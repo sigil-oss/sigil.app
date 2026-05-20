@@ -99,13 +99,17 @@ export default function StakeScreen() {
   });
 
   function goLockConfirm() {
-    const amount = Number(amountStr.trim());
-    if (!amountStr.trim() || isNaN(amount) || amount <= 0) {
+    const trimmed = amountStr.trim();
+    if (!trimmed || !/^\d+$/.test(trimmed) || BigInt(trimmed) <= 0n) {
       setAmountError("INVALID AMOUNT");
       return;
     }
-    if (amount < QEARN_MIN_LOCK) {
+    if (BigInt(trimmed) < BigInt(QEARN_MIN_LOCK)) {
       setAmountError(`MINIMUM ${QEARN_MIN_LOCK.toLocaleString()} QU`);
+      return;
+    }
+    if (balance !== null && BigInt(trimmed) > balance) {
+      setAmountError("INSUFFICIENT BALANCE");
       return;
     }
     setAmountError("");
@@ -116,7 +120,7 @@ export default function StakeScreen() {
     if (!wallet || !tickInfo) return;
     setStep("sending");
     try {
-      const amount = BigInt(Math.round(Number(amountStr.trim())));
+      const amount = BigInt(amountStr.trim());
       const targetTick = estimateTargetTick(tickInfo.tick ?? 0, settings.tickOffset);
 
       const { encoded, hash } = await wallet.buildScTransaction({
@@ -213,7 +217,7 @@ export default function StakeScreen() {
     </div>
   );
 
-  const entered = amountStr.trim() ? BigInt(Math.round(Number(amountStr))) : 0n;
+  const entered = amountStr.trim() && /^\d+$/.test(amountStr.trim()) ? BigInt(amountStr.trim()) : 0n;
   const remaining = balance !== null ? balance - entered : null;
   const balanceOver = remaining !== null && remaining < 0n;
 
