@@ -291,14 +291,19 @@ jobs:
           mkdir -p sigs
           # Retry up to 3 times — GitHub CDN can lag a few seconds after upload
           for attempt in 1 2 3; do
-            gh release download "${TAG}" --repo "${GH_REPO}" --pattern "*.sig" --dir sigs/ --clobber && break
-            echo "Attempt ${attempt} failed, retrying in 15s..."
-            sleep 15
+            if gh release download "${TAG}" --repo "${GH_REPO}" --pattern "*.sig" --dir sigs/ --clobber; then
+              break
+            fi
+            if [[ $attempt -lt 3 ]]; then
+              echo "Attempt ${attempt} failed, retrying in 15s..."
+              sleep 15
+            fi
           done
 
-          WIN_SIG_FILE=$(ls sigs/*.nsis.zip.sig 2>/dev/null | head -1)
-          MAC_SIG_FILE=$(ls sigs/*.app.tar.gz.sig 2>/dev/null | head -1)
-          LIN_SIG_FILE=$(ls sigs/*.AppImage.tar.gz.sig 2>/dev/null | head -1)
+          # find avoids ls glob failures (exit 2) when no files match under pipefail
+          WIN_SIG_FILE=$(find sigs/ -name "*.nsis.zip.sig" | head -1)
+          MAC_SIG_FILE=$(find sigs/ -name "*.app.tar.gz.sig" | head -1)
+          LIN_SIG_FILE=$(find sigs/ -name "*.AppImage.tar.gz.sig" | head -1)
 
           if [[ -z "$WIN_SIG_FILE" || -z "$MAC_SIG_FILE" || -z "$LIN_SIG_FILE" ]]; then
             echo "ERROR: missing .sig files (win='${WIN_SIG_FILE}' mac='${MAC_SIG_FILE}' lin='${LIN_SIG_FILE}')"
