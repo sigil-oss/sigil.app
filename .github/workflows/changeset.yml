@@ -142,6 +142,9 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
+      - name: List bundle artifacts
+        run: find src-tauri/target/release/bundle -type f | sort
+
       - name: Upload artifacts
         uses: softprops/action-gh-release@v2
         with:
@@ -150,8 +153,7 @@ jobs:
           prerelease: false
           files: |
             src-tauri/target/release/bundle/appimage/*.AppImage
-            src-tauri/target/release/bundle/appimage/*.AppImage.tar.gz
-            src-tauri/target/release/bundle/appimage/*.AppImage.tar.gz.sig
+            src-tauri/target/release/bundle/appimage/*.AppImage.sig
             src-tauri/target/release/bundle/deb/*.deb
 
   release-macos:
@@ -258,6 +260,10 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
+      - name: List bundle artifacts
+        run: Get-ChildItem -Recurse src-tauri/target/release/bundle | Select-Object FullName
+        shell: pwsh
+
       - name: Upload artifacts
         uses: softprops/action-gh-release@v2
         with:
@@ -303,7 +309,7 @@ jobs:
           # find avoids ls glob failures (exit 2) when no files match under pipefail
           WIN_SIG_FILE=$(find sigs/ -name "*.nsis.zip.sig" | head -1)
           MAC_SIG_FILE=$(find sigs/ -name "*.app.tar.gz.sig" | head -1)
-          LIN_SIG_FILE=$(find sigs/ -name "*.AppImage.tar.gz.sig" | head -1)
+          LIN_SIG_FILE=$(find sigs/ -name "*.AppImage.sig" | head -1)
 
           if [[ -z "$WIN_SIG_FILE" || -z "$MAC_SIG_FILE" || -z "$LIN_SIG_FILE" ]]; then
             echo "ERROR: missing .sig files (win='${WIN_SIG_FILE}' mac='${MAC_SIG_FILE}' lin='${LIN_SIG_FILE}')"
