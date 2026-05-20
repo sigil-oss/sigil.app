@@ -23,26 +23,30 @@ impl Default for AutoLockState {
 }
 
 impl AutoLockState {
+    fn lock_recover<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
+        m.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
     pub fn reset(&self) {
-        *self.last_activity.lock().unwrap() = Instant::now();
+        *Self::lock_recover(&self.last_activity) = Instant::now();
     }
 
     pub fn set_timeout(&self, minutes: u64) {
-        *self.timeout_minutes.lock().unwrap() = minutes;
-        *self.enabled.lock().unwrap() = minutes > 0;
+        *Self::lock_recover(&self.timeout_minutes) = minutes;
+        *Self::lock_recover(&self.enabled) = minutes > 0;
     }
 
     pub fn set_lock_on_sleep(&self, enabled: bool) {
-        *self.lock_on_sleep.lock().unwrap() = enabled;
+        *Self::lock_recover(&self.lock_on_sleep) = enabled;
     }
 
     pub fn seconds_until_lock(&self) -> Option<u64> {
-        let enabled = *self.enabled.lock().unwrap();
+        let enabled = *Self::lock_recover(&self.enabled);
         if !enabled {
             return None;
         }
-        let timeout = Duration::from_secs(*self.timeout_minutes.lock().unwrap() * 60);
-        let elapsed = self.last_activity.lock().unwrap().elapsed();
+        let timeout = Duration::from_secs(*Self::lock_recover(&self.timeout_minutes) * 60);
+        let elapsed = Self::lock_recover(&self.last_activity).elapsed();
         timeout.checked_sub(elapsed).map(|r| r.as_secs())
     }
 }
@@ -64,29 +68,29 @@ pub fn spawn_lock_watcher(app: AppHandle) {
         // Sleep detection: if wall clock jumped well beyond the poll interval, the
         // system was suspended. Emit lock immediately if lock_on_sleep is set.
         {
-            let mut last_wall = last_poll_wall.lock().unwrap();
+            let mut last_wall = last_poll_wall.lock().unwrap_or_else(|e| e.into_inner());
             let wall_delta = now_wall.duration_since(*last_wall).unwrap_or_default();
             *last_wall = now_wall;
 
-            if *lock_on_sleep.lock().unwrap() && wall_delta.as_secs() > POLL_SECS + 20 {
+            if *lock_on_sleep.lock().unwrap_or_else(|e| e.into_inner()) && wall_delta.as_secs() > POLL_SECS + 20 {
                 app.emit("sigil:lock", ()).ok();
-                *last_activity.lock().unwrap() = Instant::now();
+                *last_activity.lock().unwrap_or_else(|e| e.into_inner()) = Instant::now();
                 continue;
             }
         }
 
         // Idle timeout check
-        let is_enabled = *enabled.lock().unwrap();
+        let is_enabled = *enabled.lock().unwrap_or_else(|e| e.into_inner());
         if !is_enabled {
             continue;
         }
 
-        let timeout = Duration::from_secs(*timeout_minutes.lock().unwrap() * 60);
-        let elapsed = last_activity.lock().unwrap().elapsed();
+        let timeout = Duration::from_secs(*timeout_minutes.lock().unwrap_or_else(|e| e.into_inner()) * 60);
+        let elapsed = last_activity.lock().unwrap_or_else(|e| e.into_inner()).elapsed();
 
         if elapsed >= timeout {
             app.emit("sigil:lock", ()).ok();
-            *last_activity.lock().unwrap() = Instant::now();
+            *last_activity.lock().unwrap_or_else(|e| e.into_inner()) = Instant::now();
         }
     });
 }

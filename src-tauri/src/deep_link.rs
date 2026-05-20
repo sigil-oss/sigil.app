@@ -1,6 +1,6 @@
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use serde_json::Value;
-use std::collections::HashSet;
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Emitter, Manager};
@@ -9,14 +9,15 @@ use url::Url;
 
 pub struct DeepLinkState {
     pending_request: Arc<Mutex<Option<String>>>,
-    seen_nonces: Arc<Mutex<HashSet<String>>>,
+    /// Maps nonce → unix timestamp of first receipt for time-bounded replay protection.
+    seen_nonces: Arc<Mutex<HashMap<String, u64>>>,
 }
 
 impl Default for DeepLinkState {
     fn default() -> Self {
         Self {
             pending_request: Arc::new(Mutex::new(None)),
-            seen_nonces: Arc::new(Mutex::new(HashSet::new())),
+            seen_nonces: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 }
@@ -34,17 +35,16 @@ impl DeepLinkState {
         self.pending_request.lock().unwrap_or_else(|e| e.into_inner()).clone()
     }
 
-    /// Returns false if the nonce was already seen (replay), true if it is fresh.
+    /// Returns false if the nonce was already seen within the last hour (replay), true if fresh.
     pub fn record_nonce(&self, nonce: &str) -> bool {
         let mut seen = self.seen_nonces.lock().unwrap_or_else(|e| e.into_inner());
-        if seen.contains(nonce) {
+        let now = now_secs();
+        // Evict entries older than the maximum valid expiry window (1 hour).
+        seen.retain(|_, &mut inserted_at| now.saturating_sub(inserted_at) < 3600);
+        if seen.contains_key(nonce) {
             return false;
         }
-        // Bound memory growth; clear after a large accumulation
-        if seen.len() > 2000 {
-            seen.clear();
-        }
-        seen.insert(nonce.to_string());
+        seen.insert(nonce.to_string(), now);
         true
     }
 }
@@ -84,6 +84,10 @@ fn validate(uri_str: &str) -> Result<ParsedRequest, String> {
 
     let d = d_param.ok_or("missing 'd' parameter")?;
 
+    if d.len() > 8192 {
+        return Err("payload too large (max 8192 bytes base64)".into());
+    }
+
     let bytes = URL_SAFE_NO_PAD
         .decode(&d)
         .map_err(|e| format!("base64url decode failed: {e}"))?;
@@ -113,11 +117,16 @@ fn validate(uri_str: &str) -> Result<ParsedRequest, String> {
         .ok_or("missing 'dapp.origin'")?;
     Url::parse(dapp_origin).map_err(|_| format!("invalid dapp.origin: {dapp_origin}"))?;
 
-    // Expiry check
-    if let Some(exp) = value["exp"].as_u64() {
-        if exp <= now_secs() {
-            return Err("request has expired".into());
-        }
+    // Expiry check: missing exp defaults to 5 minutes from receipt; exp too far in
+    // the future is clamped so dApps cannot create permanent requests.
+    const MAX_EXPIRY_SECS: u64 = 3600;
+    let now = now_secs();
+    let exp = value["exp"].as_u64().unwrap_or_else(|| now + 300);
+    if exp <= now {
+        return Err("request has expired".into());
+    }
+    if exp > now + MAX_EXPIRY_SECS {
+        return Err("request expiry too far in the future (max 1 hour)".into());
     }
 
     // Validate callback URL if present

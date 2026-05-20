@@ -16,22 +16,24 @@ impl Default for ClipboardState {
 }
 
 impl ClipboardState {
+    fn lock_recover(m: &Mutex<Option<Instant>>) -> std::sync::MutexGuard<'_, Option<Instant>> {
+        m.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
     pub fn schedule_clear(&self, after_secs: u64) {
-        if after_secs == 0 {
-            *self.clear_at.lock().unwrap() = None;
-            return;
-        }
-        *self.clear_at.lock().unwrap() =
-            Some(Instant::now() + Duration::from_secs(after_secs));
+        *Self::lock_recover(&self.clear_at) = if after_secs == 0 {
+            None
+        } else {
+            Some(Instant::now() + Duration::from_secs(after_secs))
+        };
     }
 
     pub fn cancel_clear(&self) {
-        *self.clear_at.lock().unwrap() = None;
+        *Self::lock_recover(&self.clear_at) = None;
     }
 
     pub fn should_clear(&self) -> bool {
-        let guard = self.clear_at.lock().unwrap();
-        guard.map_or(false, |at| Instant::now() >= at)
+        Self::lock_recover(&self.clear_at).map_or(false, |at| Instant::now() >= at)
     }
 }
 
