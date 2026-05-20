@@ -22,6 +22,73 @@ function formatQu(n: number): string {
   return n.toLocaleString();
 }
 
+// ── Sigil generation ────────────────────────────────────────────────────────
+
+function fnv1a(str: string): number {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return hash;
+}
+
+function lcg(seed: number): () => number {
+  let s = seed >>> 0;
+  return () => {
+    s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
+    return s / 0x100000000;
+  };
+}
+
+function buildSigil(name: string): { points: [number, number][]; lines: [number, number, number, number][] } {
+  const hash = fnv1a(name);
+  const rand = lcg(hash);
+  const count = 4 + (hash % 3); // 4, 5, or 6 points
+  const cx = 50, cy = 50, r = 33;
+
+  const angles = Array.from({ length: count }, () => rand() * Math.PI * 2);
+  angles.sort((a, b) => a - b);
+  const points: [number, number][] = angles.map((a) => [
+    cx + r * Math.cos(a),
+    cy + r * Math.sin(a),
+  ]);
+
+  const lines: [number, number, number, number][] = [];
+  // Polygon edges
+  for (let i = 0; i < count; i++) {
+    const [x1, y1] = points[i];
+    const [x2, y2] = points[(i + 1) % count];
+    lines.push([x1, y1, x2, y2]);
+  }
+  // Skip-1 diagonals (creates star/pentagram effect)
+  if (count >= 5) {
+    for (let i = 0; i < count; i++) {
+      const [x1, y1] = points[i];
+      const [x2, y2] = points[(i + 2) % count];
+      lines.push([x1, y1, x2, y2]);
+    }
+  }
+
+  return { points, lines };
+}
+
+function Sigil({ name, size, active }: { name: string; size: number; active: boolean }) {
+  const { points, lines } = buildSigil(name);
+  const color = active ? "var(--color-bg-base)" : "var(--color-text-display)";
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100" style={{ display: "block" }} aria-hidden>
+      {lines.map(([x1, y1, x2, y2], i) => (
+        <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={color} strokeWidth="1.5" strokeOpacity="0.7" />
+      ))}
+      {points.map(([cx, cy], i) => (
+        <circle key={i} cx={cx} cy={cy} r="2" fill={color} />
+      ))}
+      <circle cx="50" cy="50" r="2" fill={color} fillOpacity="0.5" />
+    </svg>
+  );
+}
+
 function SponsorGrid({ sponsors }: { sponsors: Sponsor[] }) {
   const [selected, setSelected] = useState<number | null>(null);
   const max = Math.max(...sponsors.map((s) => s.amount), 1);
@@ -70,7 +137,7 @@ function SponsorGrid({ sponsors }: { sponsors: Sponsor[] }) {
               key={i}
               initial={{ opacity: 0, scale: 0.6 }}
               animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: i * 0.04, duration: 0.2, ease: "easeOut" }}
+              transition={{ delay: Math.min(i * 0.015, 1.5), duration: 0.2, ease: "easeOut" }}
               onClick={() => setSelected(isSelected ? null : i)}
               aria-label={`Sponsor: ${sponsor.name}`}
               style={{
@@ -81,9 +148,16 @@ function SponsorGrid({ sponsors }: { sponsors: Sponsor[] }) {
                 borderRadius: "var(--radius-sharp)",
                 cursor: "pointer",
                 flexShrink: 0,
+                padding: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                overflow: "hidden",
                 transition: "background 0.12s ease, border-color 0.12s ease",
               }}
-            />
+            >
+              <Sigil name={sponsor.name} size={size} active={isSelected} />
+            </motion.button>
           );
         })}
       </div>
@@ -192,14 +266,13 @@ export default function SupportScreen() {
           <div style={{ flex: 1, height: 1, background: "var(--color-border-subtle)" }} />
         </div>
 
-        <SponsorGrid sponsors={SPONSORS} />
-      </div>
+        <div style={{ maxHeight: 220, overflowY: "auto" }}>
+          <SponsorGrid sponsors={SPONSORS} />
+        </div>
 
-      {/* Footer */}
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "var(--space-3)", marginTop: "auto" }}>
         <button
           onClick={() => openUrl(GITHUB_URL).catch(() => {})}
-          style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}
+          style={{ background: "none", border: "none", cursor: "pointer", padding: 0, alignSelf: "center" }}
         >
           <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-secondary)", letterSpacing: "0.05em" }}>
             ★ STAR ON GITHUB
