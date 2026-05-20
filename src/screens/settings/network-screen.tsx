@@ -1,11 +1,16 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/layouts/app-shell";
 import { Button } from "@/components/button";
 import { Input } from "@/components/input";
 import { usePersistedStore } from "@/store/persisted";
 import { useAutoLock } from "@/hooks/use-auto-lock";
 import { createQubicClient, configureRpc } from "@/lib/rpc";
+
+function isHttpUrl(s: string): boolean {
+  try { return ["http:", "https:"].includes(new URL(s).protocol); } catch { return false; }
+}
 
 type TestStatus = "idle" | "testing" | "ok" | "error";
 
@@ -19,22 +24,30 @@ export default function NetworkScreen() {
   const settings = usePersistedStore((s) => s.settings);
   const updateSettings = usePersistedStore((s) => s.updateSettings);
 
+  const queryClient = useQueryClient();
   const [liveUrl, setLiveUrl] = useState(settings.network.liveApiUrl);
   const [queryUrl, setQueryUrl] = useState(settings.network.queryApiUrl);
   const [testStatus, setTestStatus] = useState<TestStatus>("idle");
   const [testTick, setTestTick] = useState<number | null>(null);
 
   async function testAndSave() {
+    const live = liveUrl.trim();
+    const archive = queryUrl.trim();
+    if (!isHttpUrl(live) || !isHttpUrl(archive)) {
+      setTestStatus("error");
+      return;
+    }
     setTestStatus("testing");
     setTestTick(null);
     try {
-      const client = createQubicClient({ liveBaseUrl: liveUrl.trim(), archiveBaseUrl: queryUrl.trim() });
+      const client = createQubicClient({ liveBaseUrl: live, archiveBaseUrl: archive });
       const result = await client.live.getTickInfo();
       if (!result.ok) throw new Error("bad response");
       setTestTick(result.value.tick ?? null);
       setTestStatus("ok");
-      configureRpc(liveUrl.trim(), queryUrl.trim());
-      updateSettings({ network: { ...settings.network, liveApiUrl: liveUrl.trim(), queryApiUrl: queryUrl.trim() } });
+      configureRpc(live, archive);
+      updateSettings({ network: { ...settings.network, liveApiUrl: live, queryApiUrl: archive } });
+      queryClient.invalidateQueries();
     } catch {
       setTestStatus("error");
     }
@@ -48,6 +61,7 @@ export default function NetworkScreen() {
     setTestStatus("idle");
     configureRpc(defaultLive, defaultQuery);
     updateSettings({ network: { liveApiUrl: defaultLive, queryApiUrl: defaultQuery, name: "mainnet" } });
+    queryClient.invalidateQueries();
   }
 
   const statusBar = (
