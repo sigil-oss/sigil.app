@@ -48,12 +48,14 @@ function request(type, params) {
   document.body.removeChild(a);
 }
 
-// Test identities
-const ALICE = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+// Valid Qubic identity for transfer tests (Sigil donation address — has correct checksum)
+const ALICE = 'UVYAOYTNYCRBVFBHNFIJUEOUEPEDIDUWWEAXKFSJEBJVASCQEROJOVOEEATL';
 
-// Replace these with real values from a sign_message response to test verify_message
-const TEST_SIG    = '<base64-signature-from-sign-response>';
-const TEST_PUBKEY = '<base64-public-key-from-sign-response>';
+// Replace these with real values from a sign_message response to test verify_message.
+// Steps: click "Sign message" below → approve in Sigil → copy the result JSON →
+// paste signature → public_key here, then re-serve and test the Verify buttons.
+const TEST_SIG    = '<signature field from sign_message result>';
+const TEST_PUBKEY = '<public_key field from sign_message result>';
 const TEST_MSG    = 'Hello Sigil';
 </script>
 
