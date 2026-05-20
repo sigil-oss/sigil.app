@@ -106,17 +106,22 @@ jobs:
             libjavascriptcoregtk-4.1-dev libsoup-3.0-dev
           version: 1.0
 
-      - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
 
       - name: sccache
         uses: mozilla/sccache-action@v0.0.9
+        with:
+          version: "v0.8.2"
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
           cache-targets: "false"
+          save-always: "true"
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -129,6 +134,8 @@ jobs:
         run: bun tauri build
         env:
           SCCACHE_GHA_ENABLED: "true"
+          SCCACHE_GHA_CACHE_TO: sccache-linux-${{ github.ref_name }}
+          SCCACHE_GHA_CACHE_FROM: sccache-linux-main,sccache-linux
           RUSTC_WRAPPER: sccache
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
@@ -158,20 +165,25 @@ jobs:
         with:
           ref: ${{ needs.version-or-publish.outputs.tag }}
 
-      - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
 
       - name: Add macOS universal targets
         run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
 
       - name: sccache
         uses: mozilla/sccache-action@v0.0.9
+        with:
+          version: "v0.8.2"
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
           cache-targets: "false"
+          save-always: "true"
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -184,6 +196,8 @@ jobs:
         run: bun tauri build --target universal-apple-darwin
         env:
           SCCACHE_GHA_ENABLED: "true"
+          SCCACHE_GHA_CACHE_TO: sccache-macos-${{ github.ref_name }}
+          SCCACHE_GHA_CACHE_FROM: sccache-macos-main,sccache-macos
           RUSTC_WRAPPER: sccache
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
@@ -212,17 +226,22 @@ jobs:
         with:
           ref: ${{ needs.version-or-publish.outputs.tag }}
 
-      - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
 
       - name: sccache
         uses: mozilla/sccache-action@v0.0.9
+        with:
+          version: "v0.8.2"
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
           cache-targets: "false"
+          save-always: "true"
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -242,6 +261,8 @@ jobs:
         run: bun tauri build
         env:
           SCCACHE_GHA_ENABLED: "true"
+          SCCACHE_GHA_CACHE_TO: sccache-windows-${{ github.ref_name }}
+          SCCACHE_GHA_CACHE_FROM: sccache-windows-main,sccache-windows
           RUSTC_WRAPPER: sccache
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
