@@ -99,7 +99,7 @@ fn validate(uri_str: &str) -> Result<ParsedRequest, String> {
         .as_str()
         .ok_or("missing 'type' field")?;
 
-    if !["transfer", "sc_call", "sign_message", "connect"].contains(&req_type) {
+    if !["transfer", "sc_call", "sign_message", "verify_message", "connect"].contains(&req_type) {
         return Err(format!("unknown request type: {req_type}"));
     }
 
@@ -167,6 +167,20 @@ fn validate(uri_str: &str) -> Result<ParsedRequest, String> {
                 return Err("sign_message: 'message' must not be empty".into());
             }
         }
+        "verify_message" => {
+            let msg = value["message"]
+                .as_str()
+                .ok_or("verify_message: missing 'message'")?;
+            if msg.is_empty() {
+                return Err("verify_message: 'message' must not be empty".into());
+            }
+            value["signature"]
+                .as_str()
+                .ok_or("verify_message: missing 'signature'")?;
+            value["public_key"]
+                .as_str()
+                .ok_or("verify_message: missing 'public_key'")?;
+        }
         // "connect" — no extra required fields
         _ => {}
     }
@@ -178,39 +192,36 @@ fn validate(uri_str: &str) -> Result<ParsedRequest, String> {
     })
 }
 
+pub fn process_url(app: &AppHandle, raw: &str) {
+    if !raw.starts_with("sigil://") {
+        return;
+    }
+    match validate(raw) {
+        Ok(parsed) => {
+            let state = app.state::<DeepLinkState>();
+            if !state.record_nonce(&parsed.nonce) {
+                eprintln!("[sigil] deep link rejected: duplicate nonce '{}'", parsed.nonce);
+                return;
+            }
+            let envelope = serde_json::json!({
+                "request": parsed.request,
+                "callback": parsed.callback,
+            });
+            let payload = envelope.to_string();
+            state.store(payload.clone());
+            app.emit("sigil:request", payload).ok();
+        }
+        Err(e) => {
+            eprintln!("[sigil] deep link rejected: {e}");
+        }
+    }
+}
+
 pub fn register_handler(app: &AppHandle) {
     let handle = app.clone();
-
     app.deep_link().on_open_url(move |event| {
         for url in event.urls() {
-            let raw = url.to_string();
-
-            if !raw.starts_with("sigil://") {
-                continue;
-            }
-
-            match validate(&raw) {
-                Ok(parsed) => {
-                    let state = handle.state::<DeepLinkState>();
-
-                    // Reject replayed nonces within this session
-                    if !state.record_nonce(&parsed.nonce) {
-                        eprintln!("[sigil] deep link rejected: duplicate nonce '{}'", parsed.nonce);
-                        continue;
-                    }
-
-                    let envelope = serde_json::json!({
-                        "request": parsed.request,
-                        "callback": parsed.callback,
-                    });
-                    let payload = envelope.to_string();
-                    state.store(payload.clone());
-                    handle.emit("sigil:request", payload).ok();
-                }
-                Err(e) => {
-                    eprintln!("[sigil] deep link rejected: {e}");
-                }
-            }
+            process_url(&handle, &url.to_string());
         }
     });
 }

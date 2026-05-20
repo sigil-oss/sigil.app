@@ -10,13 +10,14 @@ import { TransferPreview, type ApproveResult } from "@/components/request/transf
 import { ScCallPreview } from "@/components/request/sc-call-preview";
 import { SignMessagePreview, type SignMessageApproveResult } from "@/components/request/sign-message-preview";
 import { ConnectPreview, type ConnectApproveResult } from "@/components/request/connect-preview";
+import { VerifyMessagePreview, type VerifyMessageResult } from "@/components/request/verify-message-preview";
 import { usePersistedStore } from "@/store/persisted";
 import { useSessionStore } from "@/store/session";
 import { useAutoLock } from "@/hooks/use-auto-lock";
 
 interface SigilEnvelope {
   request: {
-    type: "transfer" | "sc_call" | "sign_message" | "connect";
+    type: "transfer" | "sc_call" | "sign_message" | "verify_message" | "connect";
     dapp: { name: string; origin: string; icon?: string };
     nonce: string;
     exp?: number;
@@ -40,15 +41,17 @@ const TYPE_LABEL: Record<string, string> = {
   transfer: "Send QU",
   sc_call: "Contract call",
   sign_message: "Sign message",
+  verify_message: "Verify signature",
   connect: "Connect",
 };
 
 type CallbackStatus = "pending" | "ok" | "failed";
 
 interface SuccessState {
-  kind: "tx" | "message" | "connect";
-  detail: string; // tx hash, base64 signature, or identity
+  kind: "tx" | "message" | "verify" | "connect";
+  detail: string; // tx hash, base64 signature, "VALID"/"INVALID", or identity
   dappName: string;
+  hasCallback: boolean;
   callbackStatus: CallbackStatus;
   callbackBody: string;
 }
@@ -73,7 +76,7 @@ export default function RequestScreen() {
   useEffect(() => {
     if (!envelope || success) return;
     const { type: reqType, dapp, nonce } = envelope.request;
-    if (reqType === "connect") return;
+    if (reqType === "connect" || reqType === "verify_message") return;
 
     const approval = approvedDapps.find((d) => d.origin === dapp.origin);
     if (!approval) return; // unknown dApp — let user review
@@ -138,6 +141,7 @@ export default function RequestScreen() {
       kind: "tx",
       detail: txHash,
       dappName: envelope.request.dapp.name,
+      hasCallback: !!envelope.callback,
       callbackStatus: "pending",
       callbackBody,
     };
@@ -162,6 +166,31 @@ export default function RequestScreen() {
       kind: "message",
       detail: signature,
       dappName: envelope.request.dapp.name,
+      hasCallback: !!envelope.callback,
+      callbackStatus: "pending",
+      callbackBody,
+    };
+    setSuccess(state);
+    await postCallback(callbackBody);
+  }
+
+  async function handleApproveVerify({ valid, identity }: VerifyMessageResult) {
+    if (!envelope) return;
+
+    const callbackBody = JSON.stringify({
+      status: "verified",
+      nonce: envelope.request.nonce,
+      type: envelope.request.type,
+      valid,
+      identity,
+    });
+
+    setPendingRequest(null);
+    const state: SuccessState = {
+      kind: "verify",
+      detail: valid ? "VALID" : "INVALID",
+      dappName: envelope.request.dapp.name,
+      hasCallback: !!envelope.callback,
       callbackStatus: "pending",
       callbackBody,
     };
@@ -185,6 +214,7 @@ export default function RequestScreen() {
       kind: "connect",
       detail: identity,
       dappName: envelope.request.dapp.name,
+      hasCallback: !!envelope.callback,
       callbackStatus: "pending",
       callbackBody,
     };
@@ -194,8 +224,8 @@ export default function RequestScreen() {
 
   // ── Success screen ──
   if (success) {
-    const detailLabel = success.kind === "tx" ? "Transaction hash" : success.kind === "message" ? "Signature" : "Identity";
-    const tagLabel = success.kind === "tx" ? "SENT" : success.kind === "message" ? "SIGNED" : "CONNECTED";
+    const detailLabel = success.kind === "tx" ? "Transaction hash" : success.kind === "message" ? "Signature" : success.kind === "verify" ? "Result" : "Identity";
+    const tagLabel = success.kind === "tx" ? "SENT" : success.kind === "message" ? "SIGNED" : success.kind === "verify" ? (success.detail === "VALID" ? "VALID" : "INVALID") : "CONNECTED";
 
     return (
       <SheetLayout
@@ -208,7 +238,7 @@ export default function RequestScreen() {
         }
       >
         <div style={{ textAlign: "center" }}>
-          <Tag variant="success">{tagLabel}</Tag>
+          <Tag variant={success.kind === "verify" && success.detail !== "VALID" ? "error" : "success"}>{tagLabel}</Tag>
         </div>
 
         <div>
@@ -221,17 +251,25 @@ export default function RequestScreen() {
         </div>
 
         <div>
-          {success.callbackStatus === "pending" && (
+          {!success.hasCallback ? (
+            <Button
+              variant="secondary"
+              shape="sharp"
+              size="sm"
+              style={{ width: "auto" }}
+              onClick={() => navigator.clipboard.writeText(success.callbackBody).catch(() => {})}
+            >
+              Copy result
+            </Button>
+          ) : success.callbackStatus === "pending" ? (
             <div style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-disabled)", letterSpacing: "0.05em" }}>
               [SENDING CALLBACK...]
             </div>
-          )}
-          {success.callbackStatus === "ok" && (
+          ) : success.callbackStatus === "ok" ? (
             <div style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-status-success)", letterSpacing: "0.05em" }}>
               [CALLBACK DELIVERED]
             </div>
-          )}
-          {success.callbackStatus === "failed" && (
+          ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
               <div style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-status-error)", letterSpacing: "0.05em" }}>
                 [CALLBACK FAILED]
@@ -296,6 +334,12 @@ export default function RequestScreen() {
         <SignMessagePreview
           request={request as unknown as Parameters<typeof SignMessagePreview>[0]["request"]}
           onApprove={handleApproveMessage}
+          onReject={reject}
+        />
+      ) : request.type === "verify_message" ? (
+        <VerifyMessagePreview
+          request={request as unknown as Parameters<typeof VerifyMessagePreview>[0]["request"]}
+          onApprove={handleApproveVerify}
           onReject={reject}
         />
       ) : request.type === "connect" ? (
