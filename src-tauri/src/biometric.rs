@@ -10,8 +10,8 @@ use tauri::command;
 mod cred_store {
     use windows::Win32::Foundation::FILETIME;
     use windows::Win32::Security::Credentials::{
-        CredDeleteW, CredFree, CredReadW, CredWriteW, CREDENTIALW, CRED_PERSIST_LOCAL_MACHINE,
-        CRED_TYPE_GENERIC,
+        CredDeleteW, CredFree, CredReadW, CredWriteW, CREDENTIALW, CRED_FLAGS,
+        CRED_PERSIST_LOCAL_MACHINE, CRED_TYPE_GENERIC,
     };
     use windows::core::{PCWSTR, PWSTR};
 
@@ -28,7 +28,7 @@ mod cred_store {
         let mut blob = password.as_bytes().to_vec();
 
         let cred = CREDENTIALW {
-            Flags: 0,
+            Flags: CRED_FLAGS(0),
             Type: CRED_TYPE_GENERIC,
             TargetName: PWSTR(target.as_ptr() as *mut u16),
             Comment: PWSTR::null(),
