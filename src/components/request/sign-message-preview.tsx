@@ -2,10 +2,12 @@ import { useState } from "react";
 import { Button } from "@/components/button";
 import { useSessionStore } from "@/store/session";
 import { usePersistedStore } from "@/store/persisted";
+import { useSigningAccount } from "@/hooks/use-signing-account";
 import { k12, sign } from "@qubic.org/crypto";
 
 export interface SignMessageRequest {
   message: string;
+  from?: string;
   data?: string; // base64-encoded raw bytes to sign; if absent, signs message UTF-8 bytes
   [key: string]: unknown;
 }
@@ -40,11 +42,13 @@ export function SignMessagePreview({ request, onApprove, onReject }: SignMessage
   const [error, setError] = useState("");
 
   const seeds = useSessionStore((s) => s.seeds);
-  const wallets = useSessionStore((s) => s.wallets);
-  const settings = usePersistedStore((s) => s.settings);
+  const { wallet, accountName, fromError, selectedIndex, setSelectedIndex, showPicker } =
+    useSigningAccount(request.from);
+  const vault = usePersistedStore((s) =>
+    s.vaults.find((v) => v.id === s.settings.activeVaultId)
+  );
 
-  const seed = seeds[settings.activeAccountIndex] ?? null;
-  const wallet = wallets[settings.activeAccountIndex] ?? null;
+  const seed = seeds[selectedIndex] ?? null;
 
   async function approve() {
     if (!seed || !wallet) return;
@@ -66,6 +70,11 @@ export function SignMessagePreview({ request, onApprove, onReject }: SignMessage
       setError(e instanceof Error ? e.message : "Signing failed.");
       setProcessing(false);
     }
+  }
+
+  function truncate(id: string): string {
+    if (!id || id.length <= 20) return id;
+    return `${id.slice(0, 10)}...${id.slice(-10)}`;
   }
 
   return (
@@ -97,13 +106,56 @@ export function SignMessagePreview({ request, onApprove, onReject }: SignMessage
         </div>
       </div>
 
+      {/* Account picker (shown when dApp didn't specify `from`) */}
+      {showPicker && vault && (
+        <div>
+          <div style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-label)", fontWeight: 500, color: "var(--color-text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "var(--space-2)" }}>
+            Sign as
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-2)" }}>
+            {vault.accounts.filter((a) => !a.hidden).map((acc) => (
+              <button
+                key={acc.index}
+                onClick={() => setSelectedIndex(acc.index)}
+                style={{
+                  fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)",
+                  letterSpacing: "0.05em", padding: "var(--space-1) var(--space-3)",
+                  borderRadius: "var(--radius-pill)",
+                  border: `1px solid ${acc.index === selectedIndex ? "var(--color-text-display)" : "var(--color-border-strong)"}`,
+                  background: acc.index === selectedIndex ? "var(--color-text-display)" : "transparent",
+                  color: acc.index === selectedIndex ? "var(--color-bg-base)" : "var(--color-text-secondary)",
+                  cursor: "pointer",
+                }}
+              >
+                {acc.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {fromError ? (
+        <div style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-status-error)", letterSpacing: "0.05em" }}>
+          [{fromError}]
+        </div>
+      ) : (
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "var(--space-4)" }}>
+          <span style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-label)", fontWeight: 500, color: "var(--color-text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em", flexShrink: 0 }}>
+            From
+          </span>
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-primary)", letterSpacing: "0.05em", textAlign: "right", wordBreak: "break-all" }}>
+            {accountName} · {truncate(wallet?.identity ?? "")}
+          </span>
+        </div>
+      )}
+
       {error && (
         <div style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-status-error)", letterSpacing: "0.05em" }}>
           [{error}]
         </div>
       )}
 
-      <Button onClick={approve} loading={processing} disabled={!seed || !wallet}>
+      <Button onClick={approve} loading={processing} disabled={!seed || !wallet || !!fromError}>
         Sign message
       </Button>
       <Button variant="danger" shape="sharp" onClick={onReject}>
