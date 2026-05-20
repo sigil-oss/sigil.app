@@ -239,7 +239,7 @@ export default function VaultsScreen() {
             label="Password"
             value={switchPassword}
             onChange={(e) => { setSwitchPassword(e.target.value); setSwitchError(""); }}
-            onKeyDown={(e) => e.key === "Enter" && doSwitch()}
+            onKeyDown={(e) => e.key === "Enter" && !switchLoading && doSwitch()}
             error={switchError}
             placeholder="••••••••••"
             autoComplete="current-password"
@@ -286,7 +286,7 @@ export default function VaultsScreen() {
             label="Vault password"
             value={importPassword}
             onChange={(e) => { setImportPassword(e.target.value); setImportError(""); }}
-            onKeyDown={(e) => e.key === "Enter" && doImport()}
+            onKeyDown={(e) => e.key === "Enter" && !importLoading && doImport()}
             error={importError}
             placeholder="••••••••••"
             autoComplete="current-password"
@@ -313,7 +313,7 @@ export default function VaultsScreen() {
             label="Enter password to confirm"
             value={deletePassword}
             onChange={(e) => { setDeletePassword(e.target.value); setDeleteError(""); }}
-            onKeyDown={(e) => e.key === "Enter" && doDelete()}
+            onKeyDown={(e) => e.key === "Enter" && !deleteLoading && doDelete()}
             error={deleteError}
             placeholder="••••••••••"
             autoComplete="current-password"
