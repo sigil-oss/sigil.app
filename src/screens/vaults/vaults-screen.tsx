@@ -39,6 +39,7 @@ export default function VaultsScreen() {
   const removeVault = usePersistedStore((s) => s.removeVault);
   const touchVaultUnlocked = usePersistedStore((s) => s.touchVaultUnlocked);
   const unlock = useSessionStore((s) => s.unlock);
+  const sessionLock = useSessionStore((s) => s.lock);
 
   // Import state
   interface ImportData { name: string; color: VaultColor; accounts: AccountMeta[]; vault: VaultData; }
@@ -106,8 +107,14 @@ export default function VaultsScreen() {
     setDeleteError("");
     try {
       await unlockVault(deletingVault.encryptedData, deletePassword);
+      const wasActive = deletingVault.id === settings.activeVaultId;
       removeVault(deletingVault.id);
-      if (vaults.length <= 1) navigate("/setup", { replace: true });
+      if (wasActive) sessionLock();
+      const remaining = usePersistedStore.getState().vaults;
+      if (remaining.length === 0) {
+        navigate("/setup", { replace: true });
+        return;
+      }
       setDeletingVault(null);
     } catch {
       setDeleteError("WRONG PASSWORD");

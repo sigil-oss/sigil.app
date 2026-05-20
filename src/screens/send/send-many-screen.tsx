@@ -16,7 +16,7 @@ import { useTickInfo } from "@/hooks/use-tick-info";
 import { isValidIdentity } from "@/lib/crypto";
 import { getRpcClient, estimateTargetTick } from "@/lib/rpc";
 import { QUTIL_ADDRESS, Q_UTIL_SEND_TO_MANY_V1_INPUT_TYPE, qUtilGetSendToManyV1Fee } from "@/lib/contracts";
-import { truncateId } from "@/lib/format";
+import { truncateId, formatQu } from "@/lib/format";
 import { qk } from "@/lib/query-keys";
 
 const MAX_RECIPIENTS = 25;
@@ -98,7 +98,7 @@ export default function SendManyScreen() {
   }, 0);
 
   async function send() {
-    if (!wallet || !tickInfo) return;
+    if (!wallet || !tickInfo || fee === null) return;
     setStep("sending");
     try {
       const targetTick = estimateTargetTick(tickInfo.tick ?? 0, settings.tickOffset);
@@ -247,7 +247,7 @@ export default function SendManyScreen() {
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
                   <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-disabled)", letterSpacing: "0.05em" }}>AVAILABLE</span>
                   <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", letterSpacing: "0.05em", color: over ? "var(--color-status-error)" : "var(--color-text-secondary)" }}>
-                    {Number(remaining).toLocaleString()} QU
+                    {formatQu(remaining)} QU
                   </span>
                 </div>
               );

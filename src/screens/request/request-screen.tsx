@@ -103,6 +103,14 @@ export default function RequestScreen() {
     }
   }, [envelope, success, navigate, setPendingRequest]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Dismiss without notifying the dApp — used by the BACK button so navigating
+  // away doesn't send a spurious rejection to the dApp.
+  function dismiss() {
+    invoke("clear_pending_request").catch(() => {});
+    setPendingRequest(null);
+    navigate("/dashboard", { replace: true });
+  }
+
   function reject() {
     invoke("clear_pending_request").catch(() => {});
     if (envelope?.callback) {
@@ -311,8 +319,8 @@ export default function RequestScreen() {
   const statusBar = (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
       <button
-        onClick={reject}
-        aria-label="Reject and close"
+        onClick={dismiss}
+        aria-label="Close without rejecting"
         style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-secondary)", letterSpacing: "0.05em", padding: 0 }}
       >
         ← BACK

@@ -448,7 +448,7 @@ function ReviewRow({ label, value }: { label: string; value: string }) {
 function BalanceBar({ balance, amountStr }: { balance: bigint | null; amountStr: string }) {
   if (balance === null) return null;
   const n = amountStr.trim();
-  const entered = n && !isNaN(Number(n)) ? BigInt(Math.round(Number(n))) : 0n;
+  const entered = n ? BigInt(n) : 0n;
   const remaining = balance - entered;
   const over = remaining < 0n;
   return (
@@ -457,7 +457,7 @@ function BalanceBar({ balance, amountStr }: { balance: bigint | null; amountStr:
         AVAILABLE
       </span>
       <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", letterSpacing: "0.05em", color: over ? "var(--color-status-error)" : "var(--color-text-secondary)" }}>
-        {Number(remaining).toLocaleString()} QU
+        {formatQu(remaining)} QU
       </span>
     </div>
   );
