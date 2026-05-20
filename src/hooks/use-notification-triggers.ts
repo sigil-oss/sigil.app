@@ -5,6 +5,7 @@ import { useSessionStore } from "@/store/session";
 import { useBalance } from "@/hooks/use-balance";
 import { useTxHistory } from "@/hooks/use-tx-history";
 import { useLastProcessedTick } from "@/hooks/use-last-processed-tick";
+import { useTickInfo } from "@/hooks/use-tick-info";
 import { notify } from "@/lib/notifications";
 
 function truncateId(id: string): string {
@@ -62,9 +63,11 @@ export function useNotificationTriggers() {
     prevPendingHashesRef.current = currentHashes;
   }, [pendingTxs]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Confirmed / expired: driven by lastProcessedTick + tx history ─────
+  // ── Confirmed / expired: driven by tick + tx history ─────────────────
   const { data: lastProcessedTickData } = useLastProcessedTick();
   const lastProcessedTick = lastProcessedTickData?.tickNumber ?? 0;
+  const { data: tickInfo } = useTickInfo();
+  const currentTick = tickInfo?.tick ?? 0;
   // Always fetch history when there are pending txs — cleanup must run regardless of notification prefs.
   const { data: txHistory } = useTxHistory(pendingTxs.length > 0 ? identity : null);
   const confirmedHashesRef = useRef<Set<string>>(new Set());
@@ -117,12 +120,13 @@ export function useNotificationTriggers() {
     }
   }, [txHistory]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Expired: tx never appeared in history after target tick + 2 processed ticks — always remove; notify if enabled.
+  // Expired: tx never appeared in history after target tick + 30 live ticks — always remove; notify if enabled.
+  // Uses the live tick (same source as targetTick) so this fires reliably even if the archive lags.
   useEffect(() => {
-    if (!lastProcessedTick) return;
+    if (!currentTick) return;
     for (const pending of pendingTxs) {
       if (confirmedHashesRef.current.has(pending.hash)) continue;
-      if (lastProcessedTick >= pending.targetTick + 2) {
+      if (currentTick > pending.targetTick + 30) {
         confirmedHashesRef.current.add(pending.hash);
         removePendingTx(pending.hash);
         if (enabled && onConfirmed) {
@@ -131,5 +135,5 @@ export function useNotificationTriggers() {
         }
       }
     }
-  }, [lastProcessedTick, pendingTxs]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentTick, pendingTxs]); // eslint-disable-line react-hooks/exhaustive-deps
 }
