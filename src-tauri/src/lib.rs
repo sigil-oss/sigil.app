@@ -7,6 +7,7 @@ mod deep_link;
 use auto_lock::AutoLockState;
 use clipboard::ClipboardState;
 use deep_link::DeepLinkState;
+use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -14,7 +15,17 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_deep_link::init())
-        .plugin(tauri_plugin_single_instance::init(|_app, _args, _cwd| {}))
+        .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+            // When a second instance is launched (e.g. user clicked a sigil:// link while
+            // the app was already running), process any deep link URL in its args.
+            for arg in args {
+                deep_link::process_url(app, &arg);
+            }
+            // Bring the existing window to the front.
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.set_focus();
+            }
+        }))
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_updater::Builder::default().build())

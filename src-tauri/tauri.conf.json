@@ -24,7 +24,8 @@
         "maximizable": false,
         "fullscreen": false,
         "center": true,
-        "decorations": false
+        "decorations": false,
+        "devtools": true
       }
     ],
     "security": {
