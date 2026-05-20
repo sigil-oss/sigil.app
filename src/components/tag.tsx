@@ -18,8 +18,6 @@ const VARIANT_COLOR: Record<TagVariant, string> = {
 export function Tag({ children, variant = "neutral", style }: TagProps) {
   return (
     <span
-      role="status"
-      aria-label={children}
       style={{
         fontFamily: "var(--font-mono)",
         fontSize: "var(--text-mono-sm)",

@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from "react";
+import { useState, useEffect, useRef, type CSSProperties } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { motion } from "motion/react";
 import { usePersistedStore } from "@/store/persisted";
@@ -14,6 +14,13 @@ export function IdentityDisplay({ identity, style }: IdentityDisplayProps) {
   const [expanded, setExpanded] = useState(false);
   const [flash, setFlash] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current !== null) clearInterval(intervalRef.current);
+    };
+  }, []);
 
   async function copy() {
     try {
@@ -25,10 +32,15 @@ export function IdentityDisplay({ identity, style }: IdentityDisplayProps) {
     setTimeout(() => setFlash(false), 200);
 
     if (clearSecs > 0) {
+      if (intervalRef.current !== null) clearInterval(intervalRef.current);
       setCountdown(clearSecs);
-      const id = setInterval(() => {
+      intervalRef.current = setInterval(() => {
         setCountdown((c) => {
-          if (c === null || c <= 1) { clearInterval(id); return null; }
+          if (c === null || c <= 1) {
+            if (intervalRef.current !== null) clearInterval(intervalRef.current);
+            intervalRef.current = null;
+            return null;
+          }
           return c - 1;
         });
       }, 1000);

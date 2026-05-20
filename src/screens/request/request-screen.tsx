@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { invoke } from "@tauri-apps/api/core";
 import { Button } from "@/components/button";
@@ -59,6 +59,9 @@ export default function RequestScreen() {
   const navigate = useNavigate();
 
   const approvedDapps = usePersistedStore((s) => s.settings.approvedDapps);
+  // Capture approvedDapps at mount so the permission check runs once per
+  // request, not on every store update (which would re-reject mid-review).
+  const approvedDappsRef = useRef(approvedDapps);
   const pendingRequest = useSessionStore((s) => s.pendingRequest);
   const setPendingRequest = useSessionStore((s) => s.setPendingRequest);
 
@@ -71,12 +74,15 @@ export default function RequestScreen() {
 
   // Enforce dApp permissions: if origin is already approved but lacks the
   // required permission for this request type, auto-reject immediately.
+  // Uses a ref snapshot so changing approvedDapps while reviewing doesn't
+  // re-run this effect and silently navigate away.
   useEffect(() => {
     if (!envelope || success) return;
+    approvedDappsRef.current = approvedDapps;
     const { type: reqType, dapp, nonce } = envelope.request;
     if (reqType === "connect" || reqType === "verify_message") return;
 
-    const approval = approvedDapps.find((d) => d.origin === dapp.origin);
+    const approval = approvedDappsRef.current.find((d) => d.origin === dapp.origin);
     if (!approval) return; // unknown dApp — let user review
 
     const needed = reqType as "transfer" | "sc_call" | "sign_message";
@@ -94,7 +100,7 @@ export default function RequestScreen() {
       setPendingRequest(null);
       navigate("/dashboard", { replace: true });
     }
-  }, [envelope, approvedDapps, success, navigate, setPendingRequest]);
+  }, [envelope, success, navigate, setPendingRequest]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function reject() {
     invoke("clear_pending_request").catch(() => {});
