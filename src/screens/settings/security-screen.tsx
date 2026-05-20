@@ -334,15 +334,14 @@ export default function SecurityScreen() {
               onChange={(e) => setEnablePw(e.target.value)}
               placeholder="••••••••••"
               onKeyDown={(e) => e.key === "Enter" && handleEnable()}
+              className="sigil-input"
               style={{
                 fontFamily: "var(--font-mono)",
                 fontSize: "var(--text-mono-sm)",
                 color: "var(--color-text-primary)",
                 background: "var(--color-bg-elevated)",
-                border: "1px solid var(--color-border-strong)",
                 borderRadius: "var(--radius-sharp)",
                 padding: "var(--space-3) var(--space-4)",
-                outline: "none",
                 width: "100%",
                 boxSizing: "border-box",
               }}

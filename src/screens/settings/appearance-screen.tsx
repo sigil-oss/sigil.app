@@ -39,7 +39,6 @@ function ThemeCard({ def, selected, onSelect }: { def: ThemeDef; selected: boole
         overflow: "hidden",
         width: "100%",
         textAlign: "left",
-        outline: "none",
       }}
     >
       <div
@@ -109,7 +108,6 @@ function FontCard({ pair, selected, onSelect }: { pair: typeof FONT_PAIRS[0]; se
         padding: "var(--space-3)",
         cursor: "pointer",
         textAlign: "left",
-        outline: "none",
         width: "100%",
       }}
     >
@@ -270,8 +268,7 @@ export default function AppearanceScreen() {
                 borderRadius: "50%",
                 background: ac.hex,
                 border: accentColor === ac.id ? "2px solid var(--color-text-display)" : "2px solid transparent",
-                outline: accentColor === ac.id ? `2px solid ${ac.hex}` : "none",
-                outlineOffset: 2,
+                boxShadow: accentColor === ac.id ? `0 0 0 2px ${ac.hex}` : "none",
                 cursor: "pointer",
                 padding: 0,
                 flexShrink: 0,

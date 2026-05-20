@@ -177,7 +177,7 @@ export default function CreateVaultScreen() {
                       width: 24, height: 24, borderRadius: "50%",
                       background: COLOR_CSS[c],
                       border: color === c ? "2px solid var(--color-text-display)" : "2px solid transparent",
-                      cursor: "pointer", outline: "none", padding: 0,
+                      cursor: "pointer", padding: 0,
                     }}
                   />
                 ))}
