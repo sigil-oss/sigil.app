@@ -1,13 +1,14 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { QRCodeSVG } from "qrcode.react";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/layouts/app-shell";
 import { Button } from "@/components/button";
 import { useAutoLock } from "@/hooks/use-auto-lock";
-import { DONATION_IDENTITY, SPONSORS_URL, type Sponsor } from "@/data/sponsors";
+import { DONATION_IDENTITY, type Sponsor } from "@/data/sponsors";
+import { useSponsors, useInvalidateSponsors } from "@/hooks/use-sponsors";
+import { usePersistedStore } from "@/store/persisted";
 
 const GITHUB_URL = "https://github.com/sigil-oss/sigil.app";
 
@@ -212,18 +213,127 @@ function SponsorGrid({ sponsors }: { sponsors: Sponsor[] }) {
   );
 }
 
+// ── Discord prompt sheet ──────────────────────────────────────────────────────
+
+const DISCORD_HANDLE = "alez.t04";
+
+function DiscordSheet({ onClose }: { onClose: () => void }) {
+  const [copied, setCopied] = useState(false);
+
+  function copy() {
+    navigator.clipboard.writeText(DISCORD_HANDLE).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  return (
+    <>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.18 }}
+        onClick={onClose}
+        style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", zIndex: 50 }}
+      />
+      <motion.div
+        initial={{ y: "100%" }}
+        animate={{ y: 0 }}
+        exit={{ y: "100%" }}
+        transition={{ duration: 0.22, ease: "easeOut" }}
+        style={{
+          position: "fixed",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          background: "var(--color-bg-base)",
+          borderRadius: "12px 12px 0 0",
+          borderTop: "1px solid var(--color-border-strong)",
+          zIndex: 51,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          padding: "var(--space-4) var(--space-6) var(--space-8)",
+          gap: "var(--space-5)",
+        }}
+      >
+        <div style={{ width: 36, height: 3, background: "var(--color-border-strong)", borderRadius: 2 }} />
+
+        <div style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+          <span style={{
+            fontFamily: "var(--font-display)",
+            fontSize: "var(--text-headline)",
+            color: "var(--color-text-display)",
+            letterSpacing: "0.1em",
+          }}>
+            THANK YOU
+          </span>
+          <span style={{
+            fontFamily: "var(--font-sans)",
+            fontSize: "var(--text-label)",
+            color: "var(--color-text-secondary)",
+            maxWidth: 280,
+          }}>
+            Message me on Discord to show your name instead of your identity in the sponsors list.
+          </span>
+        </div>
+
+        <button
+          onClick={copy}
+          style={{
+            background: "var(--color-bg-elevated)",
+            border: "1px solid var(--color-border-strong)",
+            borderRadius: "var(--radius-sharp)",
+            cursor: "pointer",
+            padding: "var(--space-3) var(--space-5)",
+            display: "flex",
+            alignItems: "center",
+            gap: "var(--space-3)",
+          }}
+        >
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-display)", letterSpacing: "0.05em" }}>
+            @{DISCORD_HANDLE}
+          </span>
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: copied ? "var(--color-text-primary)" : "var(--color-text-disabled)", letterSpacing: "0.05em" }}>
+            {copied ? "[COPIED]" : "[COPY]"}
+          </span>
+        </button>
+
+        <button
+          onClick={onClose}
+          style={{ background: "none", border: "none", cursor: "pointer", padding: "var(--space-2)" }}
+        >
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-disabled)", letterSpacing: "0.05em" }}>
+            [CLOSE]
+          </span>
+        </button>
+      </motion.div>
+    </>
+  );
+}
+
 // ── Screen ────────────────────────────────────────────────────────────────────
 
 export default function SupportScreen() {
   const navigate = useNavigate();
   useAutoLock();
 
-  const { data: sponsors = [] } = useQuery<Sponsor[]>({
-    queryKey: ["sponsors"],
-    queryFn: () => fetch(SPONSORS_URL).then((r) => r.json()),
-    staleTime: 60 * 60 * 1000,
-    retry: 1,
-  });
+  const { data: sponsors = [] } = useSponsors();
+  const invalidateSponsors = useInvalidateSponsors();
+  const pendingTxs = usePersistedStore((s) => s.pendingTxs);
+  const [showDiscord, setShowDiscord] = useState(false);
+  const seenHashesRef = useRef<Set<string>>(new Set(pendingTxs.map((t) => t.hash)));
+
+  useEffect(() => {
+    for (const tx of pendingTxs) {
+      if (seenHashesRef.current.has(tx.hash)) continue;
+      seenHashesRef.current.add(tx.hash);
+      if (tx.destination === DONATION_IDENTITY) {
+        invalidateSponsors();
+        setShowDiscord(true);
+      }
+    }
+  }, [pendingTxs]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const statusBar = (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
@@ -241,6 +351,7 @@ export default function SupportScreen() {
   );
 
   return (
+    <>
     <AppShell statusBar={statusBar} contentStyle={{ padding: "var(--space-6)", display: "flex", flexDirection: "column", gap: "var(--space-8)" }}>
 
       {/* Donation */}
@@ -307,5 +418,9 @@ export default function SupportScreen() {
       </div>
 
     </AppShell>
+    <AnimatePresence>
+      {showDiscord && <DiscordSheet onClose={() => setShowDiscord(false)} />}
+    </AnimatePresence>
+    </>
   );
 }
