@@ -126,8 +126,15 @@ const tauriStorage: StateStorage = {
     try {
       await _disk.set(name, value);
       await _disk.save();
-    } catch {
-      // non-fatal — state lives in memory regardless
+    } catch (err) {
+      console.error("[sigil] disk write failed, retrying once:", err);
+      try {
+        await _disk.set(name, value);
+        await _disk.save();
+      } catch (err2) {
+        console.error("[sigil] disk write failed permanently — data may be lost on restart:", err2);
+        window.dispatchEvent(new CustomEvent("sigil:disk-write-error"));
+      }
     }
   },
   removeItem: async (name) => {
