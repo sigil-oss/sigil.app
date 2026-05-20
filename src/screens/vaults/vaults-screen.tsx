@@ -242,6 +242,7 @@ export default function VaultsScreen() {
             onKeyDown={(e) => e.key === "Enter" && doSwitch()}
             error={switchError}
             placeholder="••••••••••"
+            autoComplete="current-password"
             autoFocus
           />
           <Button onClick={doSwitch} loading={switchLoading}>Unlock</Button>
@@ -288,6 +289,7 @@ export default function VaultsScreen() {
             onKeyDown={(e) => e.key === "Enter" && doImport()}
             error={importError}
             placeholder="••••••••••"
+            autoComplete="current-password"
             autoFocus
           />
           <Button onClick={doImport} loading={importLoading} disabled={!importPassword}>Import vault</Button>
@@ -314,6 +316,7 @@ export default function VaultsScreen() {
             onKeyDown={(e) => e.key === "Enter" && doDelete()}
             error={deleteError}
             placeholder="••••••••••"
+            autoComplete="current-password"
             autoFocus
           />
           <Button variant="danger" shape="sharp" onClick={doDelete} loading={deleteLoading} disabled={!deletePassword}>

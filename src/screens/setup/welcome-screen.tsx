@@ -159,6 +159,7 @@ export default function WelcomeScreen() {
             onKeyDown={(e) => e.key === "Enter" && doImport()}
             error={importError}
             placeholder="••••••••••"
+            autoComplete="current-password"
             autoFocus
           />
           <Button onClick={doImport} loading={importLoading} disabled={!importPw}>

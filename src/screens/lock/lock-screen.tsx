@@ -145,6 +145,7 @@ export default function LockScreen() {
             type="password"
             label="Password"
             placeholder="••••••••••"
+            autoComplete="current-password"
             error={error}
             autoFocus
             containerStyle={{ marginBottom: "var(--space-6)" }}

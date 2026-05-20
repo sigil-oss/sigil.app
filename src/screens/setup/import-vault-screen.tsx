@@ -203,6 +203,7 @@ export default function ImportVaultScreen() {
                 onChange={(e) => setPassword(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && !loading && password.length >= 10 && finish()}
                 placeholder="••••••••••"
+                autoComplete="new-password"
                 autoFocus
                 containerStyle={{ marginBottom: "var(--space-3)" }}
               />
