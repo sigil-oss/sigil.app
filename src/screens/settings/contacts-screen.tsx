@@ -115,7 +115,7 @@ export default function SettingsContactsScreen() {
         typeof item.identity === "string" && isValidIdentity(item.identity)
       ) {
         valid.push({
-          id: typeof item.id === "string" ? item.id : globalThis.crypto.randomUUID(),
+          id: globalThis.crypto.randomUUID(),
           name: item.name.trim(),
           identity: item.identity,
           note: typeof item.note === "string" ? item.note : "",
@@ -146,16 +146,14 @@ export default function SettingsContactsScreen() {
 
   function doImportReplace() {
     if (!importAll.length) return;
-    // remove all existing, add all from file
-    for (const c of [...contacts]) removeContact(c.id);
-    for (const c of importAll) addContact(c);
+    usePersistedStore.setState({ contacts: importAll });
     setImportPreview(null);
     setImportAll([]);
   }
 
-  const filtered = contacts.filter(
-    (c) => !search || c.name.toLowerCase().includes(search.toLowerCase()) || c.identity.toLowerCase().startsWith(search.toLowerCase()),
-  );
+  const filtered = contacts
+    .filter((c) => !search || c.name.toLowerCase().includes(search.toLowerCase()) || c.identity.toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   const statusBar = (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>

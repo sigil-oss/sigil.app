@@ -36,12 +36,22 @@ export function ConnectPreview({ dappName, dappOrigin, request, onApprove, onRej
 
   const [selectedIndex, setSelectedIndex] = useState(settings.activeAccountIndex);
 
-  const permissions = request.permissions ?? [];
+  const requestedPerms = request.permissions ?? [];
+  const [grantedPerms, setGrantedPerms] = useState<Set<string>>(() => new Set(requestedPerms));
+
   const selectedWallet = wallets[selectedIndex] ?? null;
+
+  function togglePerm(p: string) {
+    setGrantedPerms((prev) => {
+      const next = new Set(prev);
+      if (next.has(p)) next.delete(p); else next.add(p);
+      return next;
+    });
+  }
 
   function approve() {
     if (!selectedWallet) return;
-
+    const permissions = requestedPerms.filter((p) => grantedPerms.has(p)) as ("transfer" | "sc_call" | "sign_message")[];
     approveDapp({
       origin: dappOrigin,
       name: dappName,
@@ -98,19 +108,31 @@ export function ConnectPreview({ dappName, dappOrigin, request, onApprove, onRej
         </div>
       </div>
 
-      {/* Requested permissions */}
-      {permissions.length > 0 && (
+      {/* Requested permissions — user can deselect individual permissions */}
+      {requestedPerms.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
           <div>
             <div style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-label)", fontWeight: 500, color: "var(--color-text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "var(--space-2)" }}>
-              Will ask you to approve
+              Permissions requested
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
-              {permissions.map((p) => (
-                <div key={p} style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-primary)", letterSpacing: "0.05em" }}>
-                  · {PERMISSION_LABELS[p] ?? p}
-                </div>
-              ))}
+              {requestedPerms.map((p) => {
+                const granted = grantedPerms.has(p);
+                return (
+                  <button
+                    key={p}
+                    onClick={() => togglePerm(p)}
+                    style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left" }}
+                  >
+                    <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: granted ? "var(--color-text-display)" : "var(--color-text-disabled)", letterSpacing: "0.05em", minWidth: 20 }}>
+                      {granted ? "[✓]" : "[ ]"}
+                    </span>
+                    <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: granted ? "var(--color-text-primary)" : "var(--color-text-disabled)", letterSpacing: "0.05em" }}>
+                      {PERMISSION_LABELS[p] ?? p}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
           <div style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-label)", color: "var(--color-text-secondary)" }}>
