@@ -83,6 +83,7 @@ export default function RequestScreen() {
 
     const needed = reqType as "transfer" | "sc_call" | "sign_message";
     if (!approval.permissions.includes(needed)) {
+      invoke("clear_pending_request").catch(() => {});
       const body = JSON.stringify({
         status: "rejected",
         nonce,
@@ -98,6 +99,7 @@ export default function RequestScreen() {
   }, [envelope, approvedDapps, success, navigate, setPendingRequest]);
 
   function reject() {
+    invoke("clear_pending_request").catch(() => {});
     if (envelope?.callback) {
       const body = JSON.stringify({
         status: "rejected",
@@ -136,6 +138,7 @@ export default function RequestScreen() {
       target_tick: targetTick,
     });
 
+    invoke("clear_pending_request").catch(() => {});
     setPendingRequest(null);
     const state: SuccessState = {
       kind: "tx",
@@ -161,6 +164,7 @@ export default function RequestScreen() {
       public_key: publicKey,
     });
 
+    invoke("clear_pending_request").catch(() => {});
     setPendingRequest(null);
     const state: SuccessState = {
       kind: "message",
@@ -185,6 +189,7 @@ export default function RequestScreen() {
       identity,
     });
 
+    invoke("clear_pending_request").catch(() => {});
     setPendingRequest(null);
     const state: SuccessState = {
       kind: "verify",
@@ -209,6 +214,7 @@ export default function RequestScreen() {
       permissions,
     });
 
+    invoke("clear_pending_request").catch(() => {});
     setPendingRequest(null);
     const state: SuccessState = {
       kind: "connect",
