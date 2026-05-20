@@ -78,8 +78,8 @@ const TEST_MSG    = 'Hello Sigil';
 
 <h3>SC calls</h3>
 <button onclick="request('sc_call', { contract_index: 9, input_type: 1, amount: 10000000 })">Qearn lock</button>
-<button onclick="request('sc_call', { contract_index: 13, input_type: 1, amount: 1000 })">Qswap (create pool)</button>
-<button onclick="request('sc_call', { contract_index: 99, input_type: 5 })">Unknown contract</button>
+<button onclick="request('sc_call', { contract_index: 13, input_type: 3, amount: 1000 })">Qswap (create pool)</button>
+<button onclick="request('sc_call', { contract_index: 63, input_type: 5 })">Unknown contract</button>
 
 <h3>Edge cases</h3>
 <button onclick="request('transfer', { to: ALICE, amount: 1, exp: Math.floor(Date.now()/1000) - 1 })">Expired request</button>
@@ -445,15 +445,15 @@ Open `test.html` in a browser (served via localhost). Sigil must be installed (n
 
 ### 12n. SC call — Qearn lock
 ```js
-request('sc_call', { contract_index: 6, input_type: 1, amount: 10000000 })
+request('sc_call', { contract_index: 9, input_type: 1, amount: 10000000 })
 ```
-1. Sheet shows "Qearn · Lock in Qearn", amount "10,000,000 QU"
+1. Sheet shows "Qearn · Lock", amount "10,000,000 QU"
 2. Detail row: "LOCK 10,000,000 QU FOR STAKING"
 3. Approve → tx broadcast; callback receives result
 
 ### 12o. SC call — unknown contract
 1. Click **Unknown contract**
-2. Sheet shows "CONTRACT #99 · Input 5" with no payload
+2. Sheet shows "Contract #63 · Procedure 5" with no payload
 3. Approve disabled if no payload / balance issue — or proceeds and broadcasts
 
 ### 12p. Expired request

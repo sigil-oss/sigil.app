@@ -28,35 +28,35 @@ export {
   qearnGetLockInfoPerEpoch,
 };
 
-// Human-readable overrides for contract names (auto-generated fallback used otherwise).
-const CONTRACT_NAME_OVERRIDES: Record<string, string> = {
-  COMPUTOR_CONTROLLED_FUND: "Computor Controlled Fund",
-  ESCROW: "Escrow",
-  GENERAL_QUORUM_PROPOSAL: "General Quorum Proposal",
-  MS_VAULT: "MS Vault",
-  MY_LAST_MATCH: "My Last Match",
-  NOSTROMO: "Nostromo",
-  PULSE: "Pulse",
-  QBAY: "Qbay",
-  QDRAW: "Qdraw",
-  QEARN: "Qearn",
-  QIP: "QIP",
-  QSWAP: "Qswap",
-  QUOTTERY: "Quottery",
-  QUSINO: "Qusino",
-  QVAULT: "QVault",
-  QX: "QX",
-  Q_BOND: "Q-Bond",
-  Q_DUEL: "Q-Duel",
-  Q_RAFFLE: "Q-Raffle",
-  Q_RESERVE_POOL: "Q Reserve Pool",
-  Q_RWA: "Q-RWA",
-  Q_THIRTY_FOUR: "Q34",
-  Q_UTIL: "QUtil",
-  RANDOM: "Random",
-  RANDOM_LOTTERY: "Random Lottery",
-  SUPPLY_WATCHER: "Supply Watcher",
-  VOTTUN_BRIDGE: "Vottun Bridge",
+// Human-readable names keyed by the camelCase namespace export (tree-shake safe).
+const NAMESPACE_TO_NAME: Record<string, string> = {
+  computorControlledFund: "Computor Controlled Fund",
+  escrow: "Escrow",
+  generalQuorumProposal: "General Quorum Proposal",
+  msVault: "MS Vault",
+  myLastMatch: "My Last Match",
+  nostromo: "Nostromo",
+  pulse: "Pulse",
+  qBond: "Q-Bond",
+  qDuel: "Q-Duel",
+  qIP: "QIP",
+  qRWA: "Q-RWA",
+  qRaffle: "Q-Raffle",
+  qReservePool: "Q Reserve Pool",
+  qThirtyFour: "Q34",
+  qUtil: "QUtil",
+  qVAULT: "QVault",
+  qbay: "Qbay",
+  qdraw: "Qdraw",
+  qearn: "Qearn",
+  qswap: "Qswap",
+  quottery: "Quottery",
+  qusino: "Qusino",
+  qx: "QX",
+  random: "Random",
+  randomLottery: "Random Lottery",
+  supplyWatcher: "Supply Watcher",
+  vottunBridge: "Vottun Bridge",
 };
 
 function toTitleCase(s: string): string {
@@ -69,13 +69,20 @@ export const CONTRACT_PROCEDURE_NAMES: Record<string, string> = {};
 
 const prefixToIndex: Record<string, number> = {};
 
+// CONTRACT_NAMES: use namespace objects (always exported regardless of tree-shaking).
 for (const [key, value] of Object.entries(contractPkg)) {
-  if (typeof value !== "number" || !key.endsWith("_CONTRACT_INDEX")) continue;
-  const prefix = key.slice(0, -"_CONTRACT_INDEX".length);
-  prefixToIndex[prefix] = value;
-  CONTRACT_NAMES[value] = CONTRACT_NAME_OVERRIDES[prefix] ?? toTitleCase(prefix);
+  if (typeof value !== "object" || value === null || typeof (value as Record<string, unknown>).contractIndex !== "number") continue;
+  const contractIndex = (value as Record<string, unknown>).contractIndex as number;
+  CONTRACT_NAMES[contractIndex] = NAMESPACE_TO_NAME[key] ?? key;
 }
 
+// prefixToIndex: built from _CONTRACT_INDEX exports available in the pre-bundle.
+for (const [key, value] of Object.entries(contractPkg)) {
+  if (typeof value !== "number" || !key.endsWith("_CONTRACT_INDEX")) continue;
+  prefixToIndex[key.slice(0, -"_CONTRACT_INDEX".length)] = value;
+}
+
+// CONTRACT_PROCEDURE_NAMES: from _INPUT_TYPE exports; prefer write ops over GET reads.
 for (const [key, value] of Object.entries(contractPkg)) {
   if (typeof value !== "number" || !key.endsWith("_INPUT_TYPE")) continue;
   let bestPrefix = "";
@@ -85,8 +92,7 @@ for (const [key, value] of Object.entries(contractPkg)) {
   if (!bestPrefix) continue;
   const compositeKey = `${prefixToIndex[bestPrefix]}:${value}`;
   const proc = key.slice(bestPrefix.length + 1, -"_INPUT_TYPE".length);
-  // Prefer write operations (non-GET) over read operations when types collide.
-  if (!CONTRACT_PROCEDURE_NAMES[compositeKey] || proc.startsWith("GET_")) continue;
+  if (CONTRACT_PROCEDURE_NAMES[compositeKey] || proc.startsWith("GET_")) continue;
   CONTRACT_PROCEDURE_NAMES[compositeKey] = toTitleCase(proc);
 }
 
