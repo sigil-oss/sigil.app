@@ -91,6 +91,7 @@ jobs:
     if: needs.version-or-publish.outputs.published == 'true'
     permissions:
       contents: write
+      actions: write
 
     steps:
       - uses: actions/checkout@v4
@@ -113,8 +114,6 @@ jobs:
 
       - name: sccache
         uses: mozilla/sccache-action@v0.0.9
-        with:
-          version: "v0.8.2"
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
@@ -159,6 +158,7 @@ jobs:
     if: needs.version-or-publish.outputs.published == 'true'
     permissions:
       contents: write
+      actions: write
 
     steps:
       - uses: actions/checkout@v4
@@ -173,8 +173,6 @@ jobs:
 
       - name: sccache
         uses: mozilla/sccache-action@v0.0.9
-        with:
-          version: "v0.8.2"
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
@@ -218,6 +216,7 @@ jobs:
     if: needs.version-or-publish.outputs.published == 'true'
     permissions:
       contents: write
+      actions: write
 
     steps:
       - uses: actions/checkout@v4
@@ -231,8 +230,6 @@ jobs:
 
       - name: sccache
         uses: mozilla/sccache-action@v0.0.9
-        with:
-          version: "v0.8.2"
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
