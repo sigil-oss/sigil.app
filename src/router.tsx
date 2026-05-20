@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
 import { createHashRouter } from "react-router-dom";
 import { AnimatedLayout } from "@/layouts/animated-layout";
+import { ErrorBoundary } from "@/components/error-boundary";
 
 const RootScreen = lazy(() => import("@/screens/root-screen"));
 const LockScreen = lazy(() => import("@/screens/lock/lock-screen"));
@@ -29,9 +30,11 @@ const SupportScreen = lazy(() => import("@/screens/settings/support-screen"));
 
 function Screen({ component: C }: { component: React.ComponentType }) {
   return (
-    <Suspense fallback={null}>
-      <C />
-    </Suspense>
+    <ErrorBoundary>
+      <Suspense fallback={null}>
+        <C />
+      </Suspense>
+    </ErrorBoundary>
   );
 }
 

@@ -9,6 +9,7 @@ import { useNotificationTriggers } from "@/hooks/use-notification-triggers";
 import { useUpdater } from "@/hooks/use-updater";
 import { configureRpc } from "@/lib/rpc";
 import { TitleBar } from "@/components/title-bar";
+import { ErrorBoundary } from "@/components/error-boundary";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -101,14 +102,16 @@ function GlobalListeners() {
 
 export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AppearanceApplier />
-      <RpcSyncer />
-      <GlobalListeners />
-      <TitleBar />
-      <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
-        <RouterProvider router={router} />
-      </div>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <AppearanceApplier />
+        <RpcSyncer />
+        <GlobalListeners />
+        <TitleBar />
+        <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
+          <RouterProvider router={router} />
+        </div>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
