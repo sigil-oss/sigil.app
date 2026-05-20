@@ -369,7 +369,7 @@ export default function SendManyScreen() {
           />
           <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)", maxHeight: 280, overflowY: "auto" }}>
             {contacts
-              .filter((c) => !pickerSearch || c.name.toLowerCase().includes(pickerSearch.toLowerCase()) || c.identity.toLowerCase().startsWith(pickerSearch.toLowerCase()))
+              .filter((c) => !pickerSearch || c.name.toLowerCase().includes(pickerSearch.toLowerCase()) || c.identity.toLowerCase().includes(pickerSearch.toLowerCase()))
               .map((c) => (
                 <button
                   key={c.id}

@@ -73,6 +73,25 @@ export default function RequestScreen() {
     if (!envelope && !success) navigate("/dashboard", { replace: true });
   }, [envelope, success, navigate]);
 
+  // Auto-dismiss when the request's exp timestamp passes so the approval
+  // buttons don't remain active after expiry.
+  useEffect(() => {
+    if (!envelope?.request.exp || success) return;
+    const msUntilExp = envelope.request.exp * 1000 - Date.now();
+    if (msUntilExp <= 0) {
+      invoke("clear_pending_request").catch(() => {});
+      setPendingRequest(null);
+      navigate("/dashboard", { replace: true });
+      return;
+    }
+    const t = setTimeout(() => {
+      invoke("clear_pending_request").catch(() => {});
+      setPendingRequest(null);
+      navigate("/dashboard", { replace: true });
+    }, msUntilExp);
+    return () => clearTimeout(t);
+  }, [envelope?.request.exp, success, navigate, setPendingRequest]);
+
   // Enforce dApp permissions: if origin is already approved but lacks the
   // required permission for this request type, auto-reject immediately.
   // Uses a ref snapshot so changing approvedDapps while reviewing doesn't

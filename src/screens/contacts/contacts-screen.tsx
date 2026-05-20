@@ -62,9 +62,9 @@ export default function ContactsScreen() {
     setEditing(null);
   }
 
-  const filtered = contacts.filter((c) =>
-    !search || c.name.toLowerCase().includes(search.toLowerCase()) || c.identity.toLowerCase().startsWith(search.toLowerCase()),
-  );
+  const filtered = contacts
+    .filter((c) => !search || c.name.toLowerCase().includes(search.toLowerCase()) || c.identity.toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   const statusBar = (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>

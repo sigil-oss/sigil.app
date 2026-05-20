@@ -152,6 +152,10 @@ export default function SendScreen() {
     setSaved(true);
   }
 
+  const pickerFiltered = contacts.filter(
+    (c) => !pickerSearch || c.name.toLowerCase().includes(pickerSearch.toLowerCase()) || c.identity.toLowerCase().includes(pickerSearch.toLowerCase()),
+  );
+
   const statusBar = (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
       <button
@@ -404,9 +408,7 @@ export default function SendScreen() {
             style={{ background: "var(--color-bg-subtle)", borderRadius: "var(--radius-sharp)", padding: "var(--space-2) var(--space-3)", fontFamily: "var(--font-sans)", fontSize: "var(--text-body)", color: "var(--color-text-display)", width: "100%", boxSizing: "border-box" }}
           />
           <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)", maxHeight: 280, overflowY: "auto" }}>
-            {contacts
-              .filter((c) => !pickerSearch || c.name.toLowerCase().includes(pickerSearch.toLowerCase()) || c.identity.toLowerCase().startsWith(pickerSearch.toLowerCase()))
-              .map((c) => (
+            {pickerFiltered.map((c) => (
                 <button
                   key={c.id}
                   onClick={() => { setDestination(c.identity); setDestError(""); setShowPicker(false); }}
@@ -418,7 +420,7 @@ export default function SendScreen() {
                   </div>
                 </button>
               ))}
-            {contacts.filter((c) => !pickerSearch || c.name.toLowerCase().includes(pickerSearch.toLowerCase()) || c.identity.toLowerCase().startsWith(pickerSearch.toLowerCase())).length === 0 && (
+            {pickerFiltered.length === 0 && (
               <div style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-disabled)", letterSpacing: "0.05em", padding: "var(--space-4)", textAlign: "center" }}>
                 [NO RESULTS]
               </div>
