@@ -1,4 +1,4 @@
-import { useState, type ReactElement } from "react";
+import { useState, useEffect, type ReactElement } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppShell } from "@/layouts/app-shell";
 import { Tag } from "@/components/tag";
@@ -38,6 +38,8 @@ export default function HistoryScreen() {
 
   const [filter, setFilter] = useState<TxFilter>("all");
   const [detail, setDetail] = useState<FetchedTx | PendingTx | null>(null);
+
+  useEffect(() => { setFilter("all"); }, [identity]);
 
   const isExpired = (p: PendingTx) => currentTick > 0 && currentTick > p.targetTick;
 

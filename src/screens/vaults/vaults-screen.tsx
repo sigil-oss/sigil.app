@@ -134,7 +134,16 @@ export default function VaultsScreen() {
         const text = await file.text();
         const parsed = JSON.parse(text);
         if (parsed.sigil !== 1 || !parsed.vault || !parsed.name?.trim()) throw new Error();
-        setImportData({ name: parsed.name, color: parsed.color ?? "slate", accounts: parsed.accounts ?? [], vault: parsed.vault as VaultData });
+        const rawAccounts: unknown[] = Array.isArray(parsed.accounts) ? parsed.accounts : [];
+        const sanitizedAccounts: AccountMeta[] = rawAccounts
+          .filter((a): a is Record<string, unknown> => a !== null && typeof a === "object" && !Array.isArray(a))
+          .map((a, i) => ({
+            index: typeof a.index === "number" && Number.isInteger(a.index) && a.index >= 0 ? a.index : i,
+            name: typeof a.name === "string" && a.name.trim() ? a.name.trim().slice(0, 64) : `Account ${i + 1}`,
+            addedAt: typeof a.addedAt === "number" && a.addedAt > 0 ? a.addedAt : Date.now(),
+            hidden: a.hidden === true,
+          }));
+        setImportData({ name: parsed.name, color: parsed.color ?? "slate", accounts: sanitizedAccounts, vault: parsed.vault as VaultData });
         setImportPassword("");
         setImportError("");
       } catch {

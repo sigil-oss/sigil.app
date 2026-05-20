@@ -30,6 +30,8 @@ function parseEnvelope(raw: string | null): SigilEnvelope | null {
   try {
     const env = JSON.parse(raw) as SigilEnvelope;
     if (!env.request?.type || !env.request?.dapp?.origin) return null;
+    if (!env.request.dapp.origin.startsWith("https://")) return null;
+    if (env.callback && !env.callback.startsWith("https://")) return null;
     if (env.request.exp && Date.now() / 1000 > env.request.exp) return null;
     return env;
   } catch {

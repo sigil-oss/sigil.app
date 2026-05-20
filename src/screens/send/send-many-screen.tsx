@@ -41,6 +41,7 @@ export default function SendManyScreen() {
   const contacts = usePersistedStore((s) => s.contacts);
   const updateContact = usePersistedStore((s) => s.updateContact);
   const addPendingTx = usePersistedStore((s) => s.addPendingTx);
+  const pendingTxs = usePersistedStore((s) => s.pendingTxs);
   const settings = usePersistedStore((s) => s.settings);
   const wallets = useSessionStore((s) => s.wallets);
   const wallet = wallets[settings.activeAccountIndex] ?? null;
@@ -51,6 +52,7 @@ export default function SendManyScreen() {
     staleTime: 60_000,
   });
   const fee = feeData?.ok ? feeData.value.fee : null;
+  const hasPendingTx = pendingTxs.some((tx) => tx.source === (wallet?.identity ?? ""));
   const { data: balanceData } = useBalance(wallet?.identity ?? null);
   const balance = balanceData?.balance ?? null;
 
@@ -304,7 +306,12 @@ export default function SendManyScreen() {
           </div>
 
           <Divider />
-          <Button onClick={send} disabled={fee === null}>Sign and send</Button>
+          {hasPendingTx && (
+            <div style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-status-warning)", letterSpacing: "0.05em" }}>
+              [TRANSFER PENDING — WAIT FOR CONFIRMATION]
+            </div>
+          )}
+          <Button onClick={send} disabled={fee === null || hasPendingTx}>Sign and send</Button>
           <Button variant="secondary" shape="sharp" onClick={() => setStep("input")}>Edit</Button>
         </>
       )}
