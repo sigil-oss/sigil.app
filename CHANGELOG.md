@@ -1,5 +1,23 @@
 # sigil
 
+## 0.4.0
+
+### Minor Changes
+
+- 26c6998: Live sponsors list and Discord prompt on donation.
+
+  - Sponsors are now computed live from the Qubic archive API (paginated, all-time) instead of a static JSON file
+  - Multiple donations from the same identity are accumulated correctly
+  - Sponsor data is cached for 10 minutes and invalidated immediately when a donation is broadcast
+  - After sending a donation, a sheet prompts the user to message `@alez.t04` on Discord to show a custom name instead of their truncated identity
+
+### Patch Changes
+
+- 26c6998: Fix pending transactions not expiring in notification triggers.
+
+  - Expired tx detection now uses the live tick (`useTickInfo`) with a +30 tick grace period, matching the history screen
+  - Previously used the archive tick (`useLastProcessedTick`) which can lag significantly behind or return 0 on API failure, causing expired txs to stay pending indefinitely
+
 ## 0.3.7
 
 ### Patch Changes
