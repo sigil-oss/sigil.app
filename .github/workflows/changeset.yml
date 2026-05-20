@@ -272,8 +272,7 @@ jobs:
           prerelease: false
           files: |
             src-tauri/target/release/bundle/nsis/*.exe
-            src-tauri/target/release/bundle/nsis/*.nsis.zip
-            src-tauri/target/release/bundle/nsis/*.nsis.zip.sig
+            src-tauri/target/release/bundle/nsis/*.exe.sig
 
   create-manifest:
     name: Create updater manifest
@@ -307,12 +306,12 @@ jobs:
           done
 
           # find avoids ls glob failures (exit 2) when no files match under pipefail
-          WIN_SIG_FILE=$(find sigs/ -name "*.nsis.zip.sig" | head -1)
+          WIN_SIG_FILE=$(find sigs/ -name "*.exe.sig" | head -1)
           MAC_SIG_FILE=$(find sigs/ -name "*.app.tar.gz.sig" | head -1)
           LIN_SIG_FILE=$(find sigs/ -name "*.AppImage.sig" | head -1)
 
           if [[ -z "$WIN_SIG_FILE" || -z "$MAC_SIG_FILE" || -z "$LIN_SIG_FILE" ]]; then
-            echo "ERROR: missing .sig files (win='${WIN_SIG_FILE}' mac='${MAC_SIG_FILE}' lin='${LIN_SIG_FILE}')"
+            echo "ERROR: missing sig files (win='${WIN_SIG_FILE}' mac='${MAC_SIG_FILE}' lin='${LIN_SIG_FILE}')"
             ls -la sigs/
             exit 1
           fi
