@@ -43,6 +43,9 @@ export default function ReceiveScreen() {
       {identity ? (
         <>
           <div
+            role={hideBalances ? "button" : undefined}
+            tabIndex={hideBalances ? 0 : undefined}
+            aria-label={hideBalances ? (qrRevealed ? "Hide QR code" : "Reveal QR code") : undefined}
             style={{
               background: "var(--color-bg-elevated)",
               border: "1px solid var(--color-border-strong)",
@@ -54,6 +57,7 @@ export default function ReceiveScreen() {
             onMouseEnter={() => hideBalances && setQrRevealed(true)}
             onMouseLeave={() => hideBalances && setQrRevealed(false)}
             onClick={() => hideBalances && setQrRevealed((v) => !v)}
+            onKeyDown={(e) => { if (hideBalances && (e.key === "Enter" || e.key === " ")) setQrRevealed((v) => !v); }}
           >
             <QRCodeSVG
               value={identity}

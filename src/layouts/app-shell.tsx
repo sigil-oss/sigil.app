@@ -38,6 +38,7 @@ export function AppShell({ children, statusBar, bottomNav, contentStyle }: AppSh
 
       {countdown !== null && (
         <div
+          aria-live="polite"
           style={{
             flexShrink: 0,
             display: "flex",

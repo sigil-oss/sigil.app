@@ -59,6 +59,7 @@ export function IdentityDisplay({ identity, style }: IdentityDisplayProps) {
         animate={{ opacity: flash ? 0.6 : 1 }}
         transition={{ duration: 0.1, ease: [0, 0, 0.2, 1] }}
         onClick={toggle}
+        aria-label={expanded ? `Address: ${identity} — click to copy and collapse` : `Copy address ${truncate(identity)}`}
         style={{
           background: "none",
           border: "none",
@@ -76,6 +77,7 @@ export function IdentityDisplay({ identity, style }: IdentityDisplayProps) {
       </motion.button>
       {countdown !== null && (
         <div
+          aria-live="polite"
           style={{
             display: "flex",
             alignItems: "center",
@@ -96,6 +98,7 @@ export function IdentityDisplay({ identity, style }: IdentityDisplayProps) {
           </span>
           <button
             onClick={clearNow}
+            aria-label="Clear clipboard now"
             style={{
               background: "none",
               border: "none",

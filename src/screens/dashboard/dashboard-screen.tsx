@@ -104,6 +104,7 @@ export default function DashboardScreen() {
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
       <button
         onClick={() => navigate("/vaults")}
+        aria-label={`Switch vault — ${vault?.name ?? "none"}`}
         style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", background: "none", border: "none", cursor: "pointer", padding: 0 }}
       >
         <div
@@ -119,6 +120,7 @@ export default function DashboardScreen() {
 
       <button
         onClick={() => setShowNetworkOverlay(true)}
+        aria-label="Network status"
         style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", background: "none", border: "none", cursor: "pointer", padding: 0 }}
       >
         <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-disabled)", letterSpacing: "0.05em" }}>
@@ -153,7 +155,7 @@ export default function DashboardScreen() {
             color: active ? "var(--color-text-display)" : "var(--color-text-disabled)",
           }}
         >
-          <Icon size={16} strokeWidth={1.5} />
+          <Icon size={16} strokeWidth={1.5} aria-hidden="true" />
           <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", letterSpacing: "0.05em" }}>
             {label}
           </span>
