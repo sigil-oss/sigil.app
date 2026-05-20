@@ -77,7 +77,8 @@ const TEST_MSG    = 'Hello Sigil';
 <button onclick="request('verify_message', { message: TEST_MSG, signature: 'AAAA', public_key: TEST_PUBKEY })">Verify (bad signature)</button>
 
 <h3>SC calls</h3>
-<button onclick="request('sc_call', { contract_index: 6, input_type: 1, amount: 10000000 })">Qearn lock</button>
+<button onclick="request('sc_call', { contract_index: 9, input_type: 1, amount: 10000000 })">Qearn lock</button>
+<button onclick="request('sc_call', { contract_index: 13, input_type: 1, amount: 1000 })">Qswap (create pool)</button>
 <button onclick="request('sc_call', { contract_index: 99, input_type: 5 })">Unknown contract</button>
 
 <h3>Edge cases</h3>

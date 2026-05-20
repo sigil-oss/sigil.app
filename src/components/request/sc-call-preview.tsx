@@ -12,6 +12,8 @@ import {
   Q_UTIL_SEND_TO_MANY_V1_INPUT_TYPE,
   QEARN_CONTRACT_INDEX,
   QEARN_LOCK_INPUT_TYPE,
+  CONTRACT_NAMES,
+  CONTRACT_PROCEDURE_NAMES,
 } from "@/lib/contracts";
 import { QEARN_UNLOCK_INPUT_TYPE } from "@qubic.org/contracts";
 import type { ApproveResult } from "./transfer-preview";
@@ -32,17 +34,6 @@ interface ScCallPreviewProps {
   onReject: () => void;
 }
 
-const CONTRACT_NAMES: Record<number, string> = {
-  [Q_UTIL_CONTRACT_INDEX]: "QUtil",
-  [QEARN_CONTRACT_INDEX]: "Qearn",
-};
-
-const INPUT_TYPE_LABELS: Record<string, string> = {
-  [`${Q_UTIL_CONTRACT_INDEX}:${Q_UTIL_SEND_TO_MANY_V1_INPUT_TYPE}`]: "Send to Many",
-  [`${Q_UTIL_CONTRACT_INDEX}:2`]: "Burn QU",
-  [`${QEARN_CONTRACT_INDEX}:${QEARN_LOCK_INPUT_TYPE}`]: "Lock in Qearn",
-  [`${QEARN_CONTRACT_INDEX}:${QEARN_UNLOCK_INPUT_TYPE}`]: "Unlock from Qearn",
-};
 
 function formatAmount(n: number | bigint): string {
   return Number(n).toLocaleString();
@@ -121,8 +112,8 @@ export function ScCallPreview({ request, onApprove, onReject }: ScCallPreviewPro
   const insufficientBalance = hasAmount && balance !== null && BigInt(request.amount!) > balance;
   const tickOffset = request.tick_offset ?? 10;
   const targetTick = tickInfo ? estimateTargetTick(tickInfo.tick ?? 0, tickOffset) : null;
-  const contractName = CONTRACT_NAMES[request.contract_index] ?? `CONTRACT #${request.contract_index}`;
-  const inputTypeLabel = INPUT_TYPE_LABELS[`${request.contract_index}:${request.input_type}`] ?? `Input ${request.input_type}`;
+  const contractName = CONTRACT_NAMES[request.contract_index] ?? `Contract #${request.contract_index}`;
+  const inputTypeLabel = CONTRACT_PROCEDURE_NAMES[`${request.contract_index}:${request.input_type}`] ?? `Procedure ${request.input_type}`;
   const destination: Identity = contractIndexToIdentity(request.contract_index);
   const payloadBytes = useMemo(
     () => (request.payload ? base64ToBytes(request.payload) : new Uint8Array(0)),
