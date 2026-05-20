@@ -270,9 +270,8 @@ export function ScCallPreview({ request, onApprove, onReject }: ScCallPreviewPro
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
         {!fromError && <Row label="From" value={`${accountName} · ${truncate(identity)}`} />}
         <Row label="To" value={truncate(destination as string)} />
+        {hasAmount && <Row label="Amount" value={`${formatAmount(request.amount!)} QU`} />}
         <Row label="Target tick" value={targetTick ? String(targetTick) : "—"} />
-        {!hasAmount && <Row label="Amount" value="None" />}
-        <Row label="Fee" value="None" />
       </div>
 
       {/* Payload — collapsible raw hex (always available for verification) */}
