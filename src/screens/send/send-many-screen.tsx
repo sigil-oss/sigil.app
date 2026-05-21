@@ -19,6 +19,7 @@ import { getRpcClient, estimateTargetTick } from "@/lib/rpc";
 import { QUTIL_ADDRESS, Q_UTIL_SEND_TO_MANY_V1_INPUT_TYPE, qUtilGetSendToManyV1Fee } from "@/lib/contracts";
 import { truncateId, formatQu } from "@/lib/format";
 import { qk } from "@/lib/query-keys";
+import { TxSending, TxError } from "@/components/tx-status";
 
 const MAX_RECIPIENTS = 25;
 
@@ -310,13 +311,7 @@ export default function SendManyScreen() {
       )}
 
       {/* ── Sending ── */}
-      {step === "sending" && (
-        <div style={{ textAlign: "center", padding: "var(--space-12) 0" }}>
-          <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-secondary)", letterSpacing: "0.05em" }}>
-            [BROADCASTING...]
-          </span>
-        </div>
-      )}
+      {step === "sending" && <TxSending />}
 
       {/* ── Done ── */}
       {step === "done" && (
@@ -340,20 +335,7 @@ export default function SendManyScreen() {
       )}
 
       {/* ── Error ── */}
-      {step === "error" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
-          <div style={{ textAlign: "center" }}>
-            <Tag variant="error">BROADCAST FAILED</Tag>
-          </div>
-          <div style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-body)", color: "var(--color-text-secondary)" }}>
-            {txError || "The transaction could not be broadcast."}
-          </div>
-          <Button onClick={() => setStep("review")}>Try again</Button>
-          <Button variant="ghost" shape="sharp" size="md" style={{ width: "auto", margin: "0 auto" }} onClick={() => navigate("/send")}>
-            Cancel
-          </Button>
-        </div>
-      )}
+      {step === "error" && <TxError message={txError} onRetry={() => setStep("review")} onCancel={() => navigate("/send")} />}
 
       {/* Contact picker modal */}
       <Modal open={pickerIndex !== null} onClose={() => setPickerIndex(null)}>

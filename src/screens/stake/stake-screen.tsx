@@ -25,6 +25,7 @@ import {
 import { qk } from "@/lib/query-keys";
 import { formatQu } from "@/lib/format";
 import { ReviewRow } from "@/components/review-row";
+import { TxSending, TxError } from "@/components/tx-status";
 
 type Tab = "lock" | "unlock";
 type Step = "main" | "confirm" | "sending" | "done" | "error";
@@ -393,13 +394,7 @@ export default function StakeScreen() {
       )}
 
       {/* ── Sending ── */}
-      {step === "sending" && (
-        <div style={{ textAlign: "center", padding: "var(--space-12) 0" }}>
-          <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-secondary)", letterSpacing: "0.05em" }}>
-            [BROADCASTING...]
-          </span>
-        </div>
-      )}
+      {step === "sending" && <TxSending />}
 
       {/* ── Done ── */}
       {step === "done" && (
@@ -429,20 +424,7 @@ export default function StakeScreen() {
       )}
 
       {/* ── Error ── */}
-      {step === "error" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
-          <div style={{ textAlign: "center" }}>
-            <Tag variant="error">BROADCAST FAILED</Tag>
-          </div>
-          <div style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-body)", color: "var(--color-text-secondary)" }}>
-            {txError || "The transaction could not be broadcast."}
-          </div>
-          <Button onClick={() => setStep("confirm")}>Try again</Button>
-          <Button variant="ghost" shape="sharp" size="md" style={{ width: "auto", margin: "0 auto" }} onClick={() => navigate("/dashboard")}>
-            Cancel
-          </Button>
-        </div>
-      )}
+      {step === "error" && <TxError message={txError} onRetry={() => setStep("confirm")} onCancel={() => navigate("/dashboard")} />}
 
     </AppShell>
   );
