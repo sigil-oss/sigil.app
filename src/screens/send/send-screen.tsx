@@ -261,7 +261,7 @@ export default function SendScreen() {
             </div>
           )}
 
-          <Button onClick={send} disabled={hasPendingTx}>Sign and send</Button>
+          <Button onClick={send} disabled={!wallet || !tickInfo || hasPendingTx}>Sign and send</Button>
           <Button variant="secondary" shape="sharp" onClick={() => setStep("input")}>Edit</Button>
         </>
       )}

@@ -39,7 +39,7 @@ export function RequestHeader({ dapp, approvedDapps }: RequestHeaderProps) {
         </Tag>
       </div>
 
-      <div style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-body)", fontWeight: 500, color: "var(--color-text-display)" }}>
+      <div style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-body)", fontWeight: 500, color: "var(--color-text-display)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
         {dapp.name}
       </div>
 
