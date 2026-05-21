@@ -314,10 +314,10 @@ export default function NetworkScreen() {
         >
           <div>
             <div style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-body)", fontWeight: 500, color: "var(--color-text-primary)" }}>
-              Debug mode
+              Developer mode
             </div>
             <div style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-label)", color: "var(--color-text-secondary)", marginTop: "var(--space-1)" }}>
-              Show raw transaction bytes and RPC response payloads
+              Show raw tx bytes, RPC payloads, and skip auto-lock blur guard
             </div>
           </div>
           <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: settings.debugMode ? "var(--color-text-display)" : "var(--color-text-disabled)", letterSpacing: "0.05em", flexShrink: 0 }}>

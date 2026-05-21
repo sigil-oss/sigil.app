@@ -13,6 +13,7 @@ export function useAutoLock() {
   const autoLockMinutes = usePersistedStore((s) => s.settings.autoLockMinutes);
   const lockOnWindowBlur = usePersistedStore((s) => s.settings.lockOnWindowBlur);
   const lockOnSleep = usePersistedStore((s) => s.settings.lockOnSleep);
+  const devMode = usePersistedStore((s) => s.settings.debugMode);
 
   // Keep Rust timer in sync with persisted settings
   useEffect(() => {
@@ -58,17 +59,17 @@ export function useAutoLock() {
     };
   }, [lock, navigate]);
 
-  // Window blur lock (paranoid mode)
+  // Window blur lock (paranoid mode) — disabled in dev mode and Vite dev builds
   useEffect(() => {
     if (!lockOnWindowBlur) return;
 
     function onBlur() {
-      if (!isLocked && !import.meta.env.DEV) {
+      if (!isLocked && !import.meta.env.DEV && !devMode) {
         invoke("force_lock").catch(() => {});
       }
     }
 
     window.addEventListener("blur", onBlur);
     return () => window.removeEventListener("blur", onBlur);
-  }, [lockOnWindowBlur, isLocked]);
+  }, [lockOnWindowBlur, isLocked, devMode]);
 }
