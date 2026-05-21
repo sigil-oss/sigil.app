@@ -26,7 +26,6 @@ export function useTxHistory(identity: string | null | undefined) {
           pagination: { size: 50, offset: 0 },
         }),
         getRpcClient().archive.getEventLogs({
-          filters: { logType: "0" },
           should: [{ terms: { source: identity!, destination: identity! } }],
           pagination: { size: 50, offset: 0 },
         }),
