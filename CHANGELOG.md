@@ -1,5 +1,19 @@
 # sigil
 
+## 0.5.0
+
+### Minor Changes
+
+- f067a43: Add experimental Bob node support (real-time WebSocket tick subscription, REST client) configurable in Network settings; rename debug mode to developer mode with blur-lock bypass when enabled
+- 5fd7bd1: Add Bob WebSocket transfer subscriptions for push-based cache invalidation: balance and tx history now update immediately on incoming/outgoing transfers when Bob is enabled and synced, replacing 5s polling latency. Health-gate all Bob WebSocket activity behind sync lag threshold so a lagging node never shows as live or triggers stale reads.
+
+### Patch Changes
+
+- 3df618f: Fix macOS LAContext UAF (release after auth completes), tighten sleep-detection to 15s, 2px focus ring for WCAG 2.4.11, safe-center FullPage overflow, /request in ROUTE_DEPTH, skip blur-lock in dev, hide-account confirmation modal
+- 37dc794: Restore AppShell scroll position on back navigation via sessionStorage, render modals via React portal to fix clipping during page transitions
+- a2cc09e: Add lastUsedAt to ApprovedDapp, cross-check verify-message signer, validate DONATION_IDENTITY at init, lock_clipboard only clears when sensitive content pending, warn on multi-account vault deletion, identity copy-on-tap in vault detail, SendToMany scroll hint
+- b079583: Surface failed/expired tx alerts in dashboard instead of silently discarding, fix notification permission re-check on app restart, add USD price display from latest-stats API with USD-to-QU input in send screen, show parse error in request screen instead of silent navigation, fix Space font pair (Space Mono for mono, correct Google URL), add Geist font pair
+
 ## 0.4.5
 
 ### Patch Changes
