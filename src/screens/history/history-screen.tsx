@@ -8,21 +8,12 @@ import { Modal } from "@/components/modal";
 import { IdentityDisplay } from "@/components/identity-display";
 import { usePersistedStore, type PendingTx } from "@/store/persisted";
 import { useSessionStore } from "@/store/session";
-import { useTxHistory } from "@/hooks/use-tx-history";
+import { useTxHistory, type TxHistoryItem } from "@/hooks/use-tx-history";
 import { useTickInfo } from "@/hooks/use-tick-info";
 import { KNOWN_CONTRACT_ADDRESSES } from "@/lib/contracts";
 import { truncateId, formatQu } from "@/lib/format";
 
 type TxFilter = "all" | "received" | "sent";
-
-interface FetchedTx {
-  hash?: string;
-  source?: string;
-  destination?: string;
-  amount?: string;
-  tickNumber?: number;
-  moneyFlew?: boolean;
-}
 
 export default function HistoryScreen() {
   const navigate = useNavigate();
@@ -38,7 +29,7 @@ export default function HistoryScreen() {
   const currentTick = tickInfo?.tick ?? 0;
 
   const [filter, setFilter] = useState<TxFilter>("all");
-  const [detail, setDetail] = useState<FetchedTx | PendingTx | null>(null);
+  const [detail, setDetail] = useState<TxHistoryItem | PendingTx | null>(null);
 
   useEffect(() => { setFilter("all"); }, [identity]);
 
