@@ -2,18 +2,23 @@ import { useQuery } from "@tanstack/react-query";
 import { getRpcClient } from "@/lib/rpc";
 import { getBobRestClient } from "@/lib/bob-client";
 import { usePersistedStore } from "@/store/persisted";
+import { useSessionStore } from "@/store/session";
 import { qk } from "@/lib/query-keys";
 
 /** Polls current tick and epoch info every 5 s. Used as the network heartbeat. */
 export function useTickInfo() {
   const useBobNode = usePersistedStore((s) => s.settings.network.useBobNode);
   const bobRestUrl = usePersistedStore((s) => s.settings.network.bobRestUrl);
+  const tickOffset = usePersistedStore((s) => s.settings.tickOffset);
+  const bobSyncLag = useSessionStore((s) => s.bobSyncLag);
+  const bobIsHealthy = bobSyncLag === null || bobSyncLag <= tickOffset;
+  const useBob = useBobNode && !!bobRestUrl && bobIsHealthy;
 
   return useQuery({
-    queryKey: [...qk.tickInfo(), useBobNode ? "bob" : "rpc"],
+    queryKey: [...qk.tickInfo(), useBob ? "bob" : "rpc"],
     queryFn: async () => {
-      if (useBobNode && bobRestUrl) {
-        const result = await getBobRestClient(bobRestUrl).getStatus();
+      if (useBob) {
+        const result = await getBobRestClient(bobRestUrl!).getStatus();
         if (!result.ok) throw result.error;
         const s = result.value as Record<string, unknown>;
         return {

@@ -28,7 +28,9 @@ export function useBobTick(): void {
         const client = createBobSubscriptionClient({ wsUrl, autoReconnect: true });
         for await (const event of client.subscribeNewTicks({ signal: ac.signal })) {
           if (!active) break;
-          setBobTick(event.data.tick ?? null, true);
+          const d = event.data as unknown as Record<string, unknown>;
+          const tick = (d.tickNumber ?? d.tick) as number | undefined;
+          setBobTick(tick ?? null, true);
         }
       } catch {
         if (active) setBobTick(null, false);

@@ -7,7 +7,7 @@ let _endpoint: string | null = null;
 
 function maybeRecreate(endpoint: string) {
   if (_endpoint !== endpoint) {
-    _rpcClient = createBobRpcClient({ endpoint: `${endpoint}/qubic` });
+    _rpcClient = createBobRpcClient({ endpoint });
     _restClient = createBobRestClient({ baseUrl: endpoint });
     _endpoint = endpoint;
   }
