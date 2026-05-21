@@ -9,6 +9,7 @@ import { FONT_PAIRS, ACCENT_COLORS, CUSTOM_SCHEME_VARS, deriveCustomScheme } fro
 import { useNotificationTriggers } from "@/hooks/use-notification-triggers";
 import { useUpdater } from "@/hooks/use-updater";
 import { configureRpc } from "@/lib/rpc";
+import { requestNotificationPermission } from "@/lib/notifications";
 import { TitleBar } from "@/components/title-bar";
 import { ErrorBoundary } from "@/components/error-boundary";
 
@@ -98,11 +99,20 @@ function useRpcSync() {
   }, [liveApiUrl, queryApiUrl]);
 }
 
+function useNotificationInit() {
+  const notificationsEnabled = usePersistedStore((s) => s.settings.notificationsEnabled);
+  useEffect(() => {
+    if (notificationsEnabled) requestNotificationPermission().catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+}
+
 function AppHooks() {
   useAppearance();
   useRpcSync();
   useDeepLink();
   useNotificationTriggers();
+  useNotificationInit();
   useUpdater();
   return null;
 }

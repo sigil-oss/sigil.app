@@ -12,6 +12,7 @@ import { useSessionStore } from "@/store/session";
 import { useBalance } from "@/hooks/use-balance";
 import { useTickInfo } from "@/hooks/use-tick-info";
 import { useTxHistory } from "@/hooks/use-tx-history";
+import { useLatestStats } from "@/hooks/use-latest-stats";
 import { isValidIdentity, newId } from "@/lib/crypto";
 import { getRpcClient, estimateTargetTick } from "@/lib/rpc";
 import { truncateId, formatQu, extractMessage } from "@/lib/format";
@@ -37,6 +38,7 @@ export default function SendScreen() {
   const { data: tickInfo } = useTickInfo();
   const { data: balanceData } = useBalance(wallet?.identity ?? null);
   const balance = balanceData?.balance ?? null;
+  const { data: stats } = useLatestStats();
 
   const [step, setStep] = useState<Step>("input");
   const [destination, setDestination] = useState(() => searchParams.get("to") ?? "");
@@ -204,7 +206,22 @@ export default function SendScreen() {
             style={{ textAlign: "right", fontSize: "var(--text-display)", fontWeight: 300, fontFamily: "var(--font-sans)" }}
           />
 
+          {stats?.price && amountStr && Number(amountStr) > 0 && (
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "calc(var(--space-1) * -1)" }}>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-disabled)", letterSpacing: "0.05em" }}>
+                ≈ ${(Number(amountStr) * stats.price).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })} USD
+              </span>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-disabled)", letterSpacing: "0.05em" }}>
+                ${(stats.price * 1e9).toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 4 })} / bQU
+              </span>
+            </div>
+          )}
+
           <BalanceBar balance={balance} amountStr={amountStr} />
+
+          {stats?.price && (
+            <UsdInput price={stats.price} onQu={(qu) => { setAmountStr(qu); setAmountError(""); }} />
+          )}
 
           <div style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-disabled)", letterSpacing: "0.05em" }}>
             FROM: {accountName} · {truncateId(identity)}
@@ -377,6 +394,45 @@ export default function SendScreen() {
       />
 
     </AppShell>
+  );
+}
+
+function UsdInput({ price, onQu }: { price: number; onQu: (qu: string) => void }) {
+  const [usd, setUsd] = useState("");
+
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const v = e.target.value.replace(/[^0-9.]/g, "");
+    setUsd(v);
+    const n = parseFloat(v);
+    if (!isNaN(n) && n > 0 && price > 0) {
+      onQu(String(Math.floor(n / price)));
+    }
+  }
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
+      <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-disabled)", letterSpacing: "0.05em", flexShrink: 0 }}>
+        OR ENTER USD:
+      </span>
+      <input
+        autoComplete="off"
+        value={usd}
+        onChange={handleChange}
+        placeholder="0.00"
+        className="sigil-input"
+        style={{
+          flex: 1,
+          background: "var(--color-bg-subtle)",
+          borderRadius: "var(--radius-sharp)",
+          padding: "var(--space-2) var(--space-3)",
+          fontFamily: "var(--font-mono)",
+          fontSize: "var(--text-mono-sm)",
+          color: "var(--color-text-display)",
+          letterSpacing: "0.05em",
+          textAlign: "right",
+        }}
+      />
+    </div>
   );
 }
 
