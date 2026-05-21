@@ -5,7 +5,6 @@ export interface FontPair {
   name: string;
   sans: string;
   mono: string;
-  googleUrl: string | null;
 }
 
 export interface AccentColor {
@@ -15,52 +14,12 @@ export interface AccentColor {
 }
 
 export const FONT_PAIRS: FontPair[] = [
-  {
-    id: "default",
-    name: "Space",
-    sans: "'Space Grotesk', system-ui, sans-serif",
-    mono: "'Space Mono', monospace",
-    googleUrl: "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300..700&family=Space+Mono:wght@400;700&display=swap",
-  },
-  {
-    id: "geist",
-    name: "Geist",
-    sans: "'Geist', system-ui, sans-serif",
-    mono: "'Geist Mono', monospace",
-    googleUrl: "https://fonts.googleapis.com/css2?family=Geist+Mono:ital,wght@0,100..900;1,100..900&family=Geist:ital,wght@0,100..900;1,100..900&display=swap",
-  },
-  {
-    id: "inter",
-    name: "Inter",
-    sans: "'Inter', system-ui, sans-serif",
-    mono: "'JetBrains Mono', monospace",
-    googleUrl:
-      "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@400;700&display=swap",
-  },
-  {
-    id: "ibm",
-    name: "IBM Plex",
-    sans: "'IBM Plex Sans', system-ui, sans-serif",
-    mono: "'IBM Plex Mono', monospace",
-    googleUrl:
-      "https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500&family=IBM+Plex+Mono:wght@400;700&display=swap",
-  },
-  {
-    id: "roboto",
-    name: "Roboto",
-    sans: "'Roboto', system-ui, sans-serif",
-    mono: "'Roboto Mono', monospace",
-    googleUrl:
-      "https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&family=Roboto+Mono:wght@400;700&display=swap",
-  },
-  {
-    id: "fira",
-    name: "Fira",
-    sans: "'Fira Sans', system-ui, sans-serif",
-    mono: "'Fira Code', monospace",
-    googleUrl:
-      "https://fonts.googleapis.com/css2?family=Fira+Sans:wght@300;400;500&family=Fira+Code:wght@400;700&display=swap",
-  },
+  { id: "default", name: "Space",    sans: "'Space Grotesk', system-ui, sans-serif", mono: "'Space Mono', monospace" },
+  { id: "geist",   name: "Geist",    sans: "'Geist', system-ui, sans-serif",          mono: "'Geist Mono', monospace" },
+  { id: "inter",   name: "Inter",    sans: "'Inter', system-ui, sans-serif",          mono: "'JetBrains Mono', monospace" },
+  { id: "ibm",     name: "IBM Plex", sans: "'IBM Plex Sans', system-ui, sans-serif",  mono: "'IBM Plex Mono', monospace" },
+  { id: "roboto",  name: "Roboto",   sans: "'Roboto', system-ui, sans-serif",         mono: "'Roboto Mono', monospace" },
+  { id: "fira",    name: "Fira",     sans: "'Fira Sans', system-ui, sans-serif",      mono: "'Fira Code', monospace" },
 ];
 
 export const ACCENT_COLORS: AccentColor[] = [

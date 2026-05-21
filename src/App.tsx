@@ -53,22 +53,6 @@ function useAppearance() {
     const root = document.documentElement;
     root.style.setProperty("--font-sans", pair.sans);
     root.style.setProperty("--font-mono", pair.mono);
-
-    const LINK_ID = "sigil-google-font";
-    const existing = document.getElementById(LINK_ID) as HTMLLinkElement | null;
-    if (pair.googleUrl) {
-      if (!existing) {
-        const link = document.createElement("link");
-        link.id = LINK_ID;
-        link.rel = "stylesheet";
-        link.href = pair.googleUrl;
-        document.head.appendChild(link);
-      } else {
-        existing.href = pair.googleUrl;
-      }
-    } else {
-      existing?.remove();
-    }
   }, [fontPair]);
 
   useEffect(() => {
