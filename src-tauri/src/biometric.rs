@@ -137,8 +137,10 @@ mod platform {
         });
         let block = block.copy();
 
+        // SAFETY: ctx must remain alive until after rx.recv() because evaluatePolicy
+        // is async — releasing ctx while authentication is in progress causes a UAF.
+        let ctx: *mut Object = unsafe { msg_send![class!(LAContext), new] };
         unsafe {
-            let ctx: *mut Object = msg_send![class!(LAContext), new];
             let bytes = reason.as_bytes();
             let ns_alloc: *mut Object = msg_send![class!(NSString), alloc];
             let ns_reason: *mut Object = msg_send![
@@ -153,19 +155,19 @@ mod platform {
                 localizedReason: ns_reason
                 reply: &*block
             ];
-            let _: () = msg_send![ctx, release];
+            // ns_reason is retained by evaluatePolicy; release our reference now.
             let _: () = msg_send![ns_reason, release];
         }
 
-        rx.recv()
+        let result = rx.recv()
             .map_err(|_| "Authentication cancelled".to_string())
             .and_then(|ok| {
-                if ok {
-                    Ok(())
-                } else {
-                    Err("Biometric authentication failed".to_string())
-                }
-            })
+                if ok { Ok(()) } else { Err("Biometric authentication failed".to_string()) }
+            });
+
+        // Release ctx only after the async callback has fired.
+        unsafe { let _: () = msg_send![ctx, release]; }
+        result
     }
 }
 
