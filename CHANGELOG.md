@@ -1,5 +1,18 @@
 # sigil
 
+## 0.4.5
+
+### Patch Changes
+
+- a5c025d: Require biometric challenge before enrollment, fix Windows CredFree leak on utf8 failure, guard send button when wallet or tick info absent, clamp dApp name overflow in request header
+- d26805a: Extract ContactPicker component eliminating duplicate contact modal JSX in send and send-many screens, extract BottomNav component from dashboard, add newId() helper replacing inline globalThis.crypto.randomUUID() calls
+- 67885a5: Extract TxSending and TxError components eliminating repeated broadcast state JSX across send, burn, send-many, and stake screens
+- da5107a: Block IPv6 loopback in deep link callback validation, update Cargo metadata, reuse reqwest client via OnceLock, sanitize backup filename, hide TitleBar in fullscreen, guard lock-screen on missing vault, replace setTimeout focus with requestAnimationFrame, validate unlock seeds/wallets length
+- 2bc533b: Extract ScreenHeader component eliminating repeated status bar JSX across 18 screens, show derived address on import vault step 2 for seed verification, guard send review button when wallet or tick info absent
+- f9d7286: Extract Skeleton design system component, add extractMessage helper to standardize error extraction across tx and biometric screens
+- 67bb005: Add TSDoc to all hooks, crypto, rpc, persisted store, appearance, and sponsors; extract seed auto-hide and clipboard-clear durations into named constants
+- 46e6e9c: Add interface-level TSDoc to complex persisted types, fix auto-lock two-mutex write race by deriving enabled state from timeout_minutes, consolidate null-rendering App side-effect components into AppHooks
+
 ## 0.4.4
 
 ### Patch Changes
