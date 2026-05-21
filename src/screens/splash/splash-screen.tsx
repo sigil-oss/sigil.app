@@ -6,16 +6,16 @@ import { usePersistedStore } from "@/store/persisted";
 import { useSessionStore } from "@/store/session";
 
 const FACTS = [
-  "Qubic uses Useful Proof-of-Work — every hash computed trains AI models.",
-  "Qubic can process over 40 million transfers per second, the fastest ledger on Earth.",
-  "There are exactly 1 quadrillion QU in total supply — no inflation, ever.",
-  "Qubic smart contracts run natively on the network with zero gas fees.",
-  "COMPUTORS are the 676 nodes that reach quorum every tick (~1.5 seconds).",
-  "Qubic's Aigarth project uses mining energy to train neural networks.",
-  "Tick epochs run weekly — IPO smart contracts launch fresh each epoch.",
-  "Qubic identities are 60-character uppercase strings — no checksums needed.",
-  "The Qubic protocol was designed by Comenius, author of the original PoW concept.",
-  "QU transfers are feeless — the network runs on miner energy, not transaction taxes.",
+  "Qubic is founded by Sergey Ivancheglo — the original creator of NXT and co-founder of IOTA.",
+  "Qubic's Useful Proof-of-Work trains AI models instead of solving arbitrary puzzles.",
+  "CertiK-verified: Qubic peaks at 15.5 million transactions per second — one of the fastest networks ever built.",
+  "Standard QUBIC transfers are completely feeless. Smart contract fees are burned to control supply.",
+  "Qubic launched with zero VC funding, no pre-mine, and no ICO — fully community-driven from day one.",
+  "Qubic nodes run on bare-metal hardware with no virtual machines, minimizing latency to the absolute floor.",
+  "Exactly 676 validators called Computors secure the network. The bottom performers are rotated out every week.",
+  "Qubic has mined other networks like Monero with its decentralized compute, then used the proceeds to buy and burn QUBIC.",
+  "The top 451 of 676 Computors reach quorum each tick — roughly every 1.5 seconds.",
+  "There is a fixed supply of 1 quadrillion QUBIC — no inflation, ever.",
 ];
 
 type Phase = "checking" | "downloading" | "installing" | "up-to-date" | "error";
