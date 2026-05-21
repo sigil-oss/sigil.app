@@ -6,7 +6,7 @@ import { Button } from "@/components/button";
 import { Input } from "@/components/input";
 import { Tag } from "@/components/tag";
 import { Divider } from "@/components/divider";
-import { Modal } from "@/components/modal";
+import { ContactPicker } from "@/components/contact-picker";
 import { usePersistedStore } from "@/store/persisted";
 import { useSessionStore } from "@/store/session";
 import { useBalance } from "@/hooks/use-balance";
@@ -52,7 +52,6 @@ export default function SendScreen() {
   const [watchResult, setWatchResult] = useState<"pending" | "confirmed" | "failed">("pending");
 
   const [showPicker, setShowPicker] = useState(false);
-  const [pickerSearch, setPickerSearch] = useState("");
 
   // Save-contact state shown in done step
   const [saveName, setSaveName] = useState("");
@@ -157,10 +156,6 @@ export default function SendScreen() {
     setSaved(true);
   }
 
-  const pickerFiltered = contacts.filter(
-    (c) => !pickerSearch || c.name.toLowerCase().includes(pickerSearch.toLowerCase()) || c.identity.toLowerCase().includes(pickerSearch.toLowerCase()),
-  );
-
   const statusBar = (
     <ScreenHeader
       title="Send QU"
@@ -190,7 +185,7 @@ export default function SendScreen() {
               ) : <span />}
               {contacts.length > 0 && (
                 <button
-                  onClick={() => { setPickerSearch(""); setShowPicker(true); }}
+                  onClick={() => setShowPicker(true)}
                   style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-disabled)", letterSpacing: "0.05em", padding: 0 }}
                 >
                   FROM CONTACTS ↓
@@ -374,39 +369,12 @@ export default function SendScreen() {
       {/* ── Error ── */}
       {step === "error" && <TxError message={txError} onRetry={() => setStep("review")} onCancel={() => navigate("/dashboard")} />}
 
-      <Modal open={showPicker} onClose={() => setShowPicker(false)}>
-        <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
-          <input
-            autoFocus
-            autoComplete="off"
-            value={pickerSearch}
-            onChange={(e) => setPickerSearch(e.target.value)}
-            placeholder="Search contacts..."
-            className="sigil-input"
-            style={{ background: "var(--color-bg-subtle)", borderRadius: "var(--radius-sharp)", padding: "var(--space-2) var(--space-3)", fontFamily: "var(--font-sans)", fontSize: "var(--text-body)", color: "var(--color-text-display)", width: "100%", boxSizing: "border-box" }}
-          />
-          <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)", maxHeight: 280, overflowY: "auto" }}>
-            {pickerFiltered.map((c) => (
-                <button
-                  key={c.id}
-                  onClick={() => { setDestination(c.identity); setDestError(""); setShowPicker(false); }}
-                  style={{ background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: "var(--space-2) var(--space-1)", borderRadius: "var(--radius-sharp)" }}
-                >
-                  <div style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-body)", fontWeight: 500, color: "var(--color-text-display)" }}>{c.name}</div>
-                  <div style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-secondary)", letterSpacing: "0.05em" }}>
-                    {c.identity.slice(0, 8)}...{c.identity.slice(-8)}
-                  </div>
-                </button>
-              ))}
-            {pickerFiltered.length === 0 && (
-              <div style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-disabled)", letterSpacing: "0.05em", padding: "var(--space-4)", textAlign: "center" }}>
-                [NO RESULTS]
-              </div>
-            )}
-          </div>
-          <Button variant="ghost" shape="sharp" size="md" style={{ width: "auto", margin: "0 auto" }} onClick={() => setShowPicker(false)}>Cancel</Button>
-        </div>
-      </Modal>
+      <ContactPicker
+        open={showPicker}
+        onClose={() => setShowPicker(false)}
+        onSelect={(identity) => { setDestination(identity); setDestError(""); setShowPicker(false); }}
+        contacts={contacts}
+      />
 
     </AppShell>
   );

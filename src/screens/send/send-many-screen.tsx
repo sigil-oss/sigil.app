@@ -7,7 +7,7 @@ import { AppShell } from "@/layouts/app-shell";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button } from "@/components/button";
 import { Input } from "@/components/input";
-import { Modal } from "@/components/modal";
+import { ContactPicker } from "@/components/contact-picker";
 import { Tag } from "@/components/tag";
 import { Divider } from "@/components/divider";
 import { usePersistedStore } from "@/store/persisted";
@@ -65,7 +65,6 @@ export default function SendManyScreen() {
 
   // Contact picker state
   const [pickerIndex, setPickerIndex] = useState<number | null>(null);
-  const [pickerSearch, setPickerSearch] = useState("");
 
   function setField(index: number, field: Partial<Recipient>) {
     setRecipients((prev) => prev.map((r, i) => (i === index ? { ...r, ...field } : r)));
@@ -186,7 +185,7 @@ export default function SendManyScreen() {
                   <div style={{ display: "flex", gap: "var(--space-2)" }}>
                     {contacts.length > 0 && (
                       <button
-                        onClick={() => { setPickerIndex(i); setPickerSearch(""); }}
+                        onClick={() => setPickerIndex(i)}
                         style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-disabled)", letterSpacing: "0.05em", padding: 0 }}
                       >
                         FROM CONTACTS ↓
@@ -337,42 +336,17 @@ export default function SendManyScreen() {
       {/* ── Error ── */}
       {step === "error" && <TxError message={txError} onRetry={() => setStep("review")} onCancel={() => navigate("/send")} />}
 
-      {/* Contact picker modal */}
-      <Modal open={pickerIndex !== null} onClose={() => setPickerIndex(null)}>
-        <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
-          <input
-            autoFocus
-            autoComplete="off"
-            value={pickerSearch}
-            onChange={(e) => setPickerSearch(e.target.value)}
-            placeholder="Search contacts..."
-            className="sigil-input"
-            style={{ background: "var(--color-bg-subtle)", borderRadius: "var(--radius-sharp)", padding: "var(--space-2) var(--space-3)", fontFamily: "var(--font-sans)", fontSize: "var(--text-body)", color: "var(--color-text-display)", width: "100%", boxSizing: "border-box" }}
-          />
-          <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)", maxHeight: 280, overflowY: "auto" }}>
-            {contacts
-              .filter((c) => !pickerSearch || c.name.toLowerCase().includes(pickerSearch.toLowerCase()) || c.identity.toLowerCase().includes(pickerSearch.toLowerCase()))
-              .map((c) => (
-                <button
-                  key={c.id}
-                  onClick={() => {
-                    if (pickerIndex !== null) {
-                      setField(pickerIndex, { identity: c.identity, identityError: "" });
-                    }
-                    setPickerIndex(null);
-                  }}
-                  style={{ background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: "var(--space-2) var(--space-1)", borderRadius: "var(--radius-sharp)" }}
-                >
-                  <div style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-body)", fontWeight: 500, color: "var(--color-text-display)" }}>{c.name}</div>
-                  <div style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-secondary)", letterSpacing: "0.05em" }}>
-                    {c.identity.slice(0, 8)}...{c.identity.slice(-8)}
-                  </div>
-                </button>
-              ))}
-          </div>
-          <Button variant="ghost" shape="sharp" size="md" style={{ width: "auto", margin: "0 auto" }} onClick={() => setPickerIndex(null)}>Cancel</Button>
-        </div>
-      </Modal>
+      <ContactPicker
+        open={pickerIndex !== null}
+        onClose={() => setPickerIndex(null)}
+        onSelect={(identity) => {
+          if (pickerIndex !== null) {
+            setField(pickerIndex, { identity, identityError: "" });
+          }
+          setPickerIndex(null);
+        }}
+        contacts={contacts}
+      />
 
     </AppShell>
   );
