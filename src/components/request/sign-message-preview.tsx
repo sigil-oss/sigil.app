@@ -98,7 +98,9 @@ export function SignMessagePreview({ request, onApprove, onReject }: SignMessage
           border: "1px solid var(--color-border-strong)",
           borderRadius: "var(--radius-sharp)",
         }}>
-          {request.message}
+          {request.message.length > 2000
+            ? `${request.message.slice(0, 2000)}\n\n[… ${request.message.length.toLocaleString()} chars total]`
+            : request.message}
         </div>
       </div>
 

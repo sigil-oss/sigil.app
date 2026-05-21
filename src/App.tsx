@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider } from "react-router-dom";
+import { useShallow } from "zustand/react/shallow";
 import { router } from "@/router";
 import { useDeepLink } from "@/hooks/use-deep-link";
 import { usePersistedStore } from "@/store/persisted";
@@ -21,10 +22,14 @@ const queryClient = new QueryClient({
 });
 
 function AppearanceApplier() {
-  const theme = usePersistedStore((s) => s.settings.theme);
-  const fontPair = usePersistedStore((s) => s.settings.fontPair);
-  const accentColor = usePersistedStore((s) => s.settings.accentColor);
-  const customScheme = usePersistedStore((s) => s.settings.customScheme);
+  const { theme, fontPair, accentColor, customScheme } = usePersistedStore(
+    useShallow((s) => ({
+      theme: s.settings.theme,
+      fontPair: s.settings.fontPair,
+      accentColor: s.settings.accentColor,
+      customScheme: s.settings.customScheme,
+    }))
+  );
 
   useEffect(() => {
     const root = document.documentElement;
@@ -83,8 +88,12 @@ function AppearanceApplier() {
 }
 
 function RpcSyncer() {
-  const liveApiUrl = usePersistedStore((s) => s.settings.network.liveApiUrl);
-  const queryApiUrl = usePersistedStore((s) => s.settings.network.queryApiUrl);
+  const { liveApiUrl, queryApiUrl } = usePersistedStore(
+    useShallow((s) => ({
+      liveApiUrl: s.settings.network.liveApiUrl,
+      queryApiUrl: s.settings.network.queryApiUrl,
+    }))
+  );
 
   useEffect(() => {
     configureRpc(liveApiUrl, queryApiUrl);

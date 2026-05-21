@@ -24,11 +24,14 @@ const VAULT_COLOR: Record<string, string> = {
   violet: "var(--color-vault-violet)",
 };
 
+// Persists across remounts so 3-failure lockout cannot be bypassed by navigation
+let _bioFailures = 0;
+
 export default function LockScreen() {
   const navigate = useNavigate();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [bioFailures, setBioFailures] = useState(0);
+  const [bioFailures, setBioFailures] = useState(_bioFailures);
 
   const vaults = usePersistedStore((s) => s.vaults);
   const settings = usePersistedStore((s) => s.settings);
@@ -47,6 +50,7 @@ export default function LockScreen() {
     const wallets = seeds.map(createWallet);
     unlock(vault.id, seeds, wallets);
     touchVaultUnlocked(vault.id);
+    _bioFailures = 0;
     navigate(pendingRequest ? "/request" : "/dashboard", { replace: true });
   }
 
@@ -72,6 +76,7 @@ export default function LockScreen() {
       await doUnlock(password);
     } catch (e) {
       const next = bioFailures + 1;
+      _bioFailures = next;
       setBioFailures(next);
       if (next >= 3) {
         setError("TOO MANY FAILURES — USE PASSWORD");

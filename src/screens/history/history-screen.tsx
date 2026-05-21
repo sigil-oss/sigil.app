@@ -145,7 +145,11 @@ export default function HistoryScreen() {
                 {isScCall ? p.contractName : (isIncoming ? truncateId(p.source) : truncateId(p.destination))}
               </div>
               <div style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-disabled)", letterSpacing: "0.05em", marginTop: 2 }}>
-                {expired ? `EXPIRED AT TICK ${p.targetTick}` : `TARGET TICK ${p.targetTick}`}
+                {expired
+                  ? `EXPIRED AT TICK ${p.targetTick}`
+                  : currentTick > 0
+                    ? `ETA ~${Math.max(1, p.targetTick - currentTick)}s`
+                    : `TARGET TICK ${p.targetTick}`}
               </div>
             </div>
             <div style={{ textAlign: "right" }}>
