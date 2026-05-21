@@ -227,9 +227,9 @@ export default function DashboardScreen() {
               )}
             </div>
           )}
-          {balance && !balanceLoading && (
+          {balance && !balanceLoading && tickInfo?.tick && (
             <div style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-disabled)", marginTop: "var(--space-2)", letterSpacing: "0.05em" }}>
-              AS OF TICK {balance.validForTick}
+              AS OF TICK {tickInfo.tick}
             </div>
           )}
           {balance && !balanceLoading && !settings.hideBalances && stats?.price && (

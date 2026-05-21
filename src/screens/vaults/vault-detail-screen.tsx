@@ -7,6 +7,7 @@ import { Input } from "@/components/input";
 import { Modal } from "@/components/modal";
 import { Divider } from "@/components/divider";
 import { usePersistedStore, type AccountMeta } from "@/store/persisted";
+import { MAX_VAULT_ACCOUNTS } from "@/hooks/use-vault-balances";
 import { useSessionStore } from "@/store/session";
 import { generateRandomSeed } from "@/lib/crypto";
 import { unlockVault, createVault, createWallet, exportVault } from "@/lib/vault";
@@ -165,7 +166,11 @@ export default function VaultDetailScreen() {
     <ScreenHeader
       title={vault.name}
       onBack={() => navigate("/vaults")}
-      action={<button type="button" onClick={openAdd} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-secondary)", letterSpacing: "0.05em", padding: 0 }}>+ ADD</button>}
+      action={
+        vault.accounts.length < MAX_VAULT_ACCOUNTS
+          ? <button type="button" onClick={openAdd} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-secondary)", letterSpacing: "0.05em", padding: 0 }}>+ ADD</button>
+          : <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-disabled)", letterSpacing: "0.05em" }}>16 MAX</span>
+      }
     />
   );
 
