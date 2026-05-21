@@ -56,7 +56,7 @@ function base64ToBytes(b64: string): Uint8Array {
 
 // Decode QUtil SendToManyV1 payload: 25×32-byte pubkeys + 25×8-byte uint64 amounts (LE)
 function decodeQUtilSendToMany(bytes: Uint8Array): { identity: string; amount: bigint }[] | null {
-  if (bytes.length < 800 + 200) return null;
+  if (bytes.length !== 800 + 200) return null;
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const results: { identity: string; amount: bigint }[] = [];
   for (let i = 0; i < 25; i++) {

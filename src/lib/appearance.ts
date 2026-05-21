@@ -100,6 +100,37 @@ export function isDarkColor(hex: string): boolean {
   return luminance(hex) < 0.4;
 }
 
+function hexToHsl(hex: string): [number, number, number] {
+  const [r, g, b] = hexToRgb(hex).map((c) => c / 255) as [number, number, number];
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  if (max === min) return [0, 0, l];
+  const d = max - min;
+  const s = d / (l > 0.5 ? 2 - max - min : max + min);
+  const h = max === r ? (g - b) / d + (g < b ? 6 : 0)
+          : max === g ? (b - r) / d + 2
+          :             (r - g) / d + 4;
+  return [h * 60, s, l];
+}
+
+function hslToHex(h: number, s: number, l: number): string {
+  const c = (1 - Math.abs(2 * l - 1)) * s;
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m = l - c / 2;
+  const [r, g, b] =
+    h < 60  ? [c, x, 0] : h < 120 ? [x, c, 0] :
+    h < 180 ? [0, c, x] : h < 240 ? [0, x, c] :
+    h < 300 ? [x, 0, c] :           [c, 0, x];
+  return rgbToHex(Math.round((r + m) * 255), Math.round((g + m) * 255), Math.round((b + m) * 255));
+}
+
+function clampAccentLightness(hex: string, dark: boolean): string {
+  const [h, s, l] = hexToHsl(hex);
+  const [lo, hi] = dark ? [0.40, 0.85] : [0.25, 0.65];
+  if (l >= lo && l <= hi) return hex;
+  return hslToHex(h, s, Math.max(lo, Math.min(hi, l)));
+}
+
 export const CUSTOM_SCHEME_VARS = [
   "--color-bg-base",
   "--color-bg-surface",
@@ -133,7 +164,7 @@ export function deriveCustomScheme(
     "--color-text-disabled":  mix(text, bg, 0.72),
     "--color-border-strong":  mix(bg, text, 0.20),
     "--color-border-subtle":  mix(bg, text, 0.10),
-    "--color-status-success": accentHex,
+    "--color-status-success": clampAccentLightness(accentHex, dark),
     "--color-status-warning": "#f59e0b",
     "--color-status-error":   dark ? "#d71921" : "#b91c1c",
     "color-scheme":           dark ? "dark" : "light",

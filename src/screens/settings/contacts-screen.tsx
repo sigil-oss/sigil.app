@@ -130,11 +130,16 @@ export default function SettingsContactsScreen() {
       return;
     }
 
-    const existingIdentities = new Set(contacts.map((c) => c.identity));
-    const toAdd = valid.filter((c) => !existingIdentities.has(c.identity));
-    const duplicates = valid.length - toAdd.length;
+    // Deduplicate within the file itself — last occurrence wins
+    const seenInFile = new Map<string, Contact>();
+    for (const c of valid) seenInFile.set(c.identity, c);
+    const deduped = Array.from(seenInFile.values());
 
-    setImportAll(valid);
+    const existingIdentities = new Set(contacts.map((c) => c.identity));
+    const toAdd = deduped.filter((c) => !existingIdentities.has(c.identity));
+    const duplicates = deduped.length - toAdd.length;
+
+    setImportAll(deduped);
     setImportPreview({ toAdd, duplicates, replacing: false });
   }
 
