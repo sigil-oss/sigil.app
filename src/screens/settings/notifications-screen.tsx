@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppShell } from "@/layouts/app-shell";
+import { ScreenHeader } from "@/components/screen-header";
 import { usePersistedStore } from "@/store/persisted";
 import { notify, requestNotificationPermission } from "@/lib/notifications";
 
@@ -128,45 +129,7 @@ export default function NotificationsScreen() {
     await notify("Sigil · Test", "Desktop notifications are working");
   }
 
-  const statusBar = (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        width: "100%",
-      }}
-    >
-      <button
-        onClick={() => navigate("/settings")}
-        style={{
-          background: "none",
-          border: "none",
-          cursor: "pointer",
-          fontFamily: "var(--font-mono)",
-          fontSize: "var(--text-mono-sm)",
-          color: "var(--color-text-secondary)",
-          letterSpacing: "0.05em",
-          padding: 0,
-        }}
-      >
-        ← BACK
-      </button>
-      <span
-        style={{
-          fontFamily: "var(--font-sans)",
-          fontSize: "var(--text-label)",
-          fontWeight: 500,
-          color: "var(--color-text-primary)",
-          textTransform: "uppercase",
-          letterSpacing: "0.05em",
-        }}
-      >
-        Notifications
-      </span>
-      <span style={{ width: 40 }} />
-    </div>
-  );
+  const statusBar = <ScreenHeader title="Notifications" onBack={() => navigate("/settings")} />;
 
   return (
     <AppShell

@@ -1,6 +1,7 @@
 import { useState, useEffect, type ReactElement } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppShell } from "@/layouts/app-shell";
+import { ScreenHeader } from "@/components/screen-header";
 import { Tag } from "@/components/tag";
 import { Divider } from "@/components/divider";
 import { Modal } from "@/components/modal";
@@ -64,20 +65,11 @@ export default function HistoryScreen() {
   });
 
   const statusBar = (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-      <button onClick={() => navigate("/dashboard")} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-secondary)", letterSpacing: "0.05em", padding: 0 }}>
-        ← BACK
-      </button>
-      <span style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-label)", fontWeight: 500, color: "var(--color-text-primary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-        Transactions
-      </span>
-      <button
-        onClick={() => refetch()}
-        style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-secondary)", letterSpacing: "0.05em", padding: 0 }}
-      >
-        ↻
-      </button>
-    </div>
+    <ScreenHeader
+      title="Transactions"
+      onBack={() => navigate("/dashboard")}
+      action={<button type="button" onClick={() => refetch()} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-secondary)", letterSpacing: "0.05em", padding: 0 }}>↻</button>}
+    />
   );
 
   const filterTabs = (

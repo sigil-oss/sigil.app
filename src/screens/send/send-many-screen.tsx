@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { buildPayload, type PayloadField } from "@qubic.org/tx";
 import type { Identity } from "@qubic.org/types";
 import { AppShell } from "@/layouts/app-shell";
+import { ScreenHeader } from "@/components/screen-header";
 import { Button } from "@/components/button";
 import { Input } from "@/components/input";
 import { Modal } from "@/components/modal";
@@ -162,18 +163,10 @@ export default function SendManyScreen() {
   }
 
   const statusBar = (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-      <button
-        onClick={() => step === "input" || step === "done" || step === "error" ? navigate("/send") : setStep("input")}
-        style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-secondary)", letterSpacing: "0.05em", padding: 0 }}
-      >
-        ← BACK
-      </button>
-      <span style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-label)", fontWeight: 500, color: "var(--color-text-primary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-        Send to Many
-      </span>
-      <span style={{ width: 40 }} />
-    </div>
+    <ScreenHeader
+      title="Send to Many"
+      onBack={() => step === "input" || step === "done" || step === "error" ? navigate("/send") : setStep("input")}
+    />
   );
 
   return (

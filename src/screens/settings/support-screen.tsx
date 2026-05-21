@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { QRCodeSVG } from "qrcode.react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { AppShell } from "@/layouts/app-shell";
+import { ScreenHeader } from "@/components/screen-header";
 import { Button } from "@/components/button";
 import { DONATION_IDENTITY, type Sponsor } from "@/data/sponsors";
 import { useSponsors, useInvalidateSponsors } from "@/hooks/use-sponsors";
@@ -330,20 +331,7 @@ export default function SupportScreen() {
     }
   }, [pendingTxs]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const statusBar = (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-      <button
-        onClick={() => navigate("/settings")}
-        style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-secondary)", letterSpacing: "0.05em", padding: 0 }}
-      >
-        ← BACK
-      </button>
-      <span style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-label)", fontWeight: 500, color: "var(--color-text-primary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-        Support
-      </span>
-      <span style={{ width: 40 }} />
-    </div>
-  );
+  const statusBar = <ScreenHeader title="Support" onBack={() => navigate("/settings")} />;
 
   return (
     <>

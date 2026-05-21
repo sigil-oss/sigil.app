@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppShell } from "@/layouts/app-shell";
+import { ScreenHeader } from "@/components/screen-header";
 import { usePersistedStore, type AppSettings, type FontPairId, type AccentColorId } from "@/store/persisted";
 import { FONT_PAIRS, ACCENT_COLORS, deriveCustomScheme } from "@/lib/appearance";
 
@@ -205,20 +206,7 @@ export default function AppearanceScreen() {
     }
   }
 
-  const statusBar = (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-      <button
-        onClick={() => navigate("/settings")}
-        style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-secondary)", letterSpacing: "0.05em", padding: 0 }}
-      >
-        ← BACK
-      </button>
-      <span style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-label)", fontWeight: 500, color: "var(--color-text-primary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-        Appearance
-      </span>
-      <span style={{ width: 40 }} />
-    </div>
-  );
+  const statusBar = <ScreenHeader title="Appearance" onBack={() => navigate("/settings")} />;
 
   return (
     <AppShell statusBar={statusBar} contentStyle={{ padding: "var(--space-6)", display: "flex", flexDirection: "column", gap: "var(--space-8)" }}>

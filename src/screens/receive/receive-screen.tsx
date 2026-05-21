@@ -2,6 +2,7 @@ import { useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { useNavigate } from "react-router-dom";
 import { AppShell } from "@/layouts/app-shell";
+import { ScreenHeader } from "@/components/screen-header";
 import { IdentityDisplay } from "@/components/identity-display";
 import { usePersistedStore } from "@/store/persisted";
 import { useSessionStore } from "@/store/session";
@@ -20,17 +21,7 @@ export default function ReceiveScreen() {
   const hideBalances = settings.hideBalances;
   const [qrRevealed, setQrRevealed] = useState(false);
 
-  const statusBar = (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-      <button onClick={() => navigate("/dashboard")} aria-label="Go back" style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-secondary)", letterSpacing: "0.05em", padding: 0 }}>
-        ← BACK
-      </button>
-      <span style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-label)", fontWeight: 500, color: "var(--color-text-primary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-        Your address
-      </span>
-      <span style={{ width: 40 }} />
-    </div>
-  );
+  const statusBar = <ScreenHeader title="Your address" onBack={() => navigate("/dashboard")} backAriaLabel="Go back" />;
 
   return (
     <AppShell statusBar={statusBar} contentStyle={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "var(--space-8)" }}>

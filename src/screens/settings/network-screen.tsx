@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/layouts/app-shell";
 import { Button } from "@/components/button";
 import { Input } from "@/components/input";
+import { ScreenHeader } from "@/components/screen-header";
 import { usePersistedStore } from "@/store/persisted";
 import { createQubicClient, configureRpc } from "@/lib/rpc";
 
@@ -62,20 +63,7 @@ export default function NetworkScreen() {
     queryClient.invalidateQueries();
   }
 
-  const statusBar = (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-      <button
-        onClick={() => navigate("/settings")}
-        style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-secondary)", letterSpacing: "0.05em", padding: 0 }}
-      >
-        ← BACK
-      </button>
-      <span style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-label)", fontWeight: 500, color: "var(--color-text-primary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-        Network
-      </span>
-      <span style={{ width: 40 }} />
-    </div>
-  );
+  const statusBar = <ScreenHeader title="Network" onBack={() => navigate("/settings")} />;
 
   return (
     <AppShell statusBar={statusBar} contentStyle={{ padding: "var(--space-6)", display: "flex", flexDirection: "column", gap: "var(--space-8)" }}>

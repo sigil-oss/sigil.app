@@ -13,6 +13,7 @@ import { ConnectPreview, type ConnectApproveResult, type ConnectRequest } from "
 import { VerifyMessagePreview, type VerifyMessageResult, type VerifyMessageRequest } from "@/components/request/verify-message-preview";
 import { usePersistedStore } from "@/store/persisted";
 import { useSessionStore } from "@/store/session";
+import { ScreenHeader } from "@/components/screen-header";
 
 type DappMeta = { name: string; origin: string; icon?: string };
 type BaseRequest = { dapp: DappMeta; nonce: string; exp?: number };
@@ -342,21 +343,7 @@ export default function RequestScreen() {
   const { request } = envelope;
   const typeLabel = TYPE_LABEL[request.type] ?? request.type;
 
-  const statusBar = (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-      <button
-        onClick={dismiss}
-        aria-label="Close without rejecting"
-        style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-secondary)", letterSpacing: "0.05em", padding: 0 }}
-      >
-        ← BACK
-      </button>
-      <span style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-label)", fontWeight: 500, color: "var(--color-text-primary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-        {typeLabel}
-      </span>
-      <span style={{ width: 40 }} />
-    </div>
-  );
+  const statusBar = <ScreenHeader title={typeLabel} onBack={dismiss} backAriaLabel="Close without rejecting" />;
 
   return (
     <SheetLayout statusBar={statusBar}>
