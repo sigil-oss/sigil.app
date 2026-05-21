@@ -30,6 +30,7 @@ export function isValidIdentity(s: string): boolean {
   }
 }
 
+/** Shorthand for `truncateId(identity, 10, 10)` — shows first 10 and last 10 characters. */
 export function truncateIdentity(identity: string): string {
   return truncateId(identity, 10, 10);
 }

@@ -16,10 +16,12 @@ let _client = createQubicClient({
   archiveBaseUrl: DEFAULT_ARCHIVE_URL,
 });
 
+/** Returns the singleton Qubic RPC client. Re-created by `configureRpc` when endpoints change. */
 export function getRpcClient() {
   return _client;
 }
 
+/** Replaces the singleton RPC client with new endpoint URLs — call when the user changes the network in settings. */
 export function configureRpc(liveBaseUrl: string, archiveBaseUrl: string) {
   _client = createQubicClient({ liveBaseUrl, archiveBaseUrl });
 }

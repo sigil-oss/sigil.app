@@ -96,6 +96,7 @@ function luminance(hex: string): number {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 
+/** Returns true if the hex color has low luminance (WCAG relative luminance < 0.4). */
 export function isDarkColor(hex: string): boolean {
   return luminance(hex) < 0.4;
 }
@@ -147,6 +148,7 @@ export const CUSTOM_SCHEME_VARS = [
   "--color-status-error",
 ];
 
+/** Derives the full CSS variable map for a custom color scheme from `bg` and `text` base colors plus an accent hex. */
 export function deriveCustomScheme(
   bg: string,
   text: string,

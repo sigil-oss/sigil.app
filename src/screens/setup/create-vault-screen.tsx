@@ -6,6 +6,7 @@ import { FullPage } from "@/layouts/full-page";
 import { Button } from "@/components/button";
 import { Input } from "@/components/input";
 import { generateRandomSeed } from "@/lib/crypto";
+import { SEED_AUTO_HIDE_MS, SEED_CLIPBOARD_CLEAR_SECS } from "@/lib/constants";
 import { createVault, createWallet } from "@/lib/vault";
 import { usePersistedStore, type VaultColor } from "@/store/persisted";
 import { useSessionStore } from "@/store/session";
@@ -70,7 +71,7 @@ export default function CreateVaultScreen() {
   useEffect(() => {
     if (step !== 2) return;
     setSeedRevealed(true);
-    const t = setTimeout(() => setSeedRevealed(false), 30_000);
+    const t = setTimeout(() => setSeedRevealed(false), SEED_AUTO_HIDE_MS);
     return () => clearTimeout(t);
   }, [step]);
 
@@ -84,7 +85,7 @@ export default function CreateVaultScreen() {
 
   async function copySeed() {
     try {
-      await invoke("copy_to_clipboard", { text: seed, clearAfterSecs: 60 });
+      await invoke("copy_to_clipboard", { text: seed, clearAfterSecs: SEED_CLIPBOARD_CLEAR_SECS });
     } catch {
       await navigator.clipboard.writeText(seed).catch(() => {});
     }

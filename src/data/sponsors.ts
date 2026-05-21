@@ -3,10 +3,10 @@ export interface Sponsor {
   amount: number; // QU contributed
 }
 
+/** Qubic identity that receives donation QU for Sigil development. */
 export const DONATION_IDENTITY =
   "UVYAOYTNYCRBVFBHNFIJUEOUEPEDIDUWWEAXKFSJEBJVASCQEROJOVOEEATL";
 
-// Identity → display name overrides, committed to the repo.
-// Fetched at runtime so a merged PR reflects immediately without a rebuild.
+/** JSON map of identity → display name for known donors. Fetched at runtime so merged PRs reflect without a rebuild. */
 export const SPONSOR_NAMES_URL =
   "https://raw.githubusercontent.com/sigil-oss/sigil.app/main/sponsor-names.json";

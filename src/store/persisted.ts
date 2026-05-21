@@ -152,9 +152,12 @@ interface PersistedState {
   pendingTxs: PendingTx[];
   addVault: (vault: VaultMeta) => void;
   updateVault: (id: string, updates: Partial<Omit<VaultMeta, "id">>) => void;
+  /** Removes the vault; if it was active, falls back to the first remaining vault (or null). */
   removeVault: (id: string) => void;
+  /** Sets the active vault and resets `activeAccountIndex` to 0. */
   setActiveVault: (id: string | null) => void;
   setActiveAccountIndex: (index: number) => void;
+  /** Stamps `lastUnlockedAt` with the current time — used to sort vaults by recency. */
   touchVaultUnlocked: (id: string) => void;
   updateSettings: (updates: Partial<AppSettings>) => void;
   addContact: (contact: Contact) => void;
@@ -162,11 +165,14 @@ interface PersistedState {
   removeContact: (id: string) => void;
   addPendingTx: (tx: PendingTx) => void;
   removePendingTx: (hash: string) => void;
+  /** Upserts a dApp approval — merges permissions into an existing entry rather than replacing it. */
   approveDapp: (dapp: ApprovedDapp) => void;
   revokeDapp: (origin: string) => void;
+  /** Removes a single permission; prunes the dApp entry entirely when no permissions remain. */
   revokeDappPermission: (origin: string, permission: ApprovedDapp["permissions"][number]) => void;
 }
 
+/** Zustand store backed by Tauri LazyStore (`sigil.json` on disk). Survives app restarts. */
 export const usePersistedStore = create<PersistedState>()(
   persist(
     (set) => ({
