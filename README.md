@@ -46,13 +46,128 @@ Updates are signed with a Tauri signing key. The public key is embedded in the b
 
 ## dApp deep linking
 
-Any web app or CLI tool opens a `sigil://v1/request?d=<payload>&cb=<callback>` URI. Sigil:
+Any web app or CLI tool can request a signature from Sigil by opening a `sigil://` URI. Sigil validates the request in Rust, focuses its window, shows a review screen, and POSTs the result back to the caller.
 
-1. Parses and validates the payload in Rust before the renderer sees it
-2. Focuses the existing window (or launches if not running)
-3. Shows a review screen — dApp name, origin, what will be signed, which account signs
-4. On approval: builds and broadcasts the transaction, POSTs the signed result to the callback URL
-5. On rejection: POSTs `{ status: "rejected" }` to the callback URL
+### URI format
+
+```
+sigil://v1/request?d=<base64url-payload>&cb=<callback-url>
+```
+
+- `d` — required. Base64url-encoded (no padding) UTF-8 JSON, max 8 192 bytes.
+- `cb` — optional. HTTPS URL that receives the result. `http://localhost` and `http://127.0.0.1` are allowed for local dev. Private/loopback addresses other than localhost are rejected.
+
+### Request payload
+
+Every request shares these top-level fields:
+
+```jsonc
+{
+  "type": "transfer" | "sc_call" | "sign_message" | "verify_message" | "connect",
+  "nonce": "<8–128 char unique string>",   // replay protection
+  "exp": 1234567890,                        // unix timestamp, max 1 hour from now; defaults to +5 min
+  "dapp": {
+    "name": "My App",
+    "origin": "https://myapp.example.com"  // must be HTTPS
+  },
+  // ...type-specific fields
+}
+```
+
+**Nonces** are tracked for one hour. Reusing a nonce within that window silently drops the request.
+
+**Expiry** auto-dismisses the review screen when the timestamp passes — approval buttons become inactive so a stale request cannot be signed after the fact.
+
+#### `transfer` — send QU
+
+```jsonc
+{
+  "type": "transfer",
+  "to": "ABCDEF...60CHARS",  // 60 uppercase A-Z
+  "amount": 1000000          // positive integer, QU
+}
+```
+
+#### `sc_call` — smart contract call
+
+```jsonc
+{
+  "type": "sc_call",
+  "contract_index": 1,   // 0–63
+  "input_type": 2,       // non-negative integer
+  "amount": 0,           // QU attached to the call
+  "payload": "..."       // optional base64url-encoded extra bytes
+}
+```
+
+#### `sign_message` — off-chain signature
+
+```jsonc
+{
+  "type": "sign_message",
+  "message": "Hello from my dApp"  // non-empty string
+}
+```
+
+#### `verify_message` — verify an existing signature
+
+```jsonc
+{
+  "type": "verify_message",
+  "message": "Hello from my dApp",
+  "signature": "<base64-encoded signature>",
+  "public_key": "<hex or base64 public key>"
+}
+```
+
+#### `connect` — request permissions
+
+```jsonc
+{
+  "type": "connect"
+  // No extra fields required. User selects which permissions to grant.
+}
+```
+
+### Callback responses
+
+Sigil POSTs JSON to the `cb` URL from native Rust (not the webview). All responses include `nonce` and `type` echoed from the request.
+
+**Approved transfer or SC call:**
+```jsonc
+{ "status": "signed", "nonce": "...", "type": "transfer", "identity": "...", "tx_hash": "...", "target_tick": 12345678 }
+```
+
+**Approved sign_message:**
+```jsonc
+{ "status": "signed", "nonce": "...", "type": "sign_message", "identity": "...", "signature": "...", "public_key": "..." }
+```
+
+**Approved verify_message:**
+```jsonc
+{ "status": "verified", "nonce": "...", "type": "verify_message", "valid": true, "identity": "..." }
+```
+
+**Approved connect:**
+```jsonc
+{ "status": "connected", "nonce": "...", "type": "connect", "identity": "...", "permissions": ["transfer", "sc_call"] }
+```
+
+**Rejected by user:**
+```jsonc
+{ "status": "rejected", "nonce": "...", "type": "...", "reason": "user_rejected" }
+```
+
+**Permission denied** (origin approved but lacks the required permission):
+```jsonc
+{ "status": "rejected", "nonce": "...", "type": "...", "reason": "permission_denied" }
+```
+
+If no callback URL is provided, the result JSON is shown in the UI with a Copy button.
+
+### Permission system
+
+`connect` grants named permissions (`transfer`, `sc_call`, `sign_message`) to an origin. Subsequent requests from the same origin that require a permission not in the approved set are auto-rejected without showing the review screen. The user can revoke individual permissions or the entire dApp approval from Settings → dApps.
 
 ---
 
