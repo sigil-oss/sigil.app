@@ -21,7 +21,7 @@ const queryClient = new QueryClient({
   },
 });
 
-function AppearanceApplier() {
+function useAppearance() {
   const { theme, fontPair, accentColor, customScheme } = usePersistedStore(
     useShallow((s) => ({
       theme: s.settings.theme,
@@ -83,11 +83,9 @@ function AppearanceApplier() {
       root.style.setProperty("--color-status-success", accent.hex);
     }
   }, [accentColor, customScheme]);
-
-  return null;
 }
 
-function RpcSyncer() {
+function useRpcSync() {
   const { liveApiUrl, queryApiUrl } = usePersistedStore(
     useShallow((s) => ({
       liveApiUrl: s.settings.network.liveApiUrl,
@@ -98,11 +96,11 @@ function RpcSyncer() {
   useEffect(() => {
     configureRpc(liveApiUrl, queryApiUrl);
   }, [liveApiUrl, queryApiUrl]);
-
-  return null;
 }
 
-function GlobalListeners() {
+function AppHooks() {
+  useAppearance();
+  useRpcSync();
   useDeepLink();
   useNotificationTriggers();
   useUpdater();
@@ -113,9 +111,7 @@ export default function App() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <AppearanceApplier />
-        <RpcSyncer />
-        <GlobalListeners />
+        <AppHooks />
         <TitleBar />
         <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
           <RouterProvider router={router} />
