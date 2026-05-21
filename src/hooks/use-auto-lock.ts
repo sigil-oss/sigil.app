@@ -63,7 +63,7 @@ export function useAutoLock() {
     if (!lockOnWindowBlur) return;
 
     function onBlur() {
-      if (!isLocked) {
+      if (!isLocked && !import.meta.env.DEV) {
         invoke("force_lock").catch(() => {});
       }
     }

@@ -68,7 +68,7 @@ pub fn spawn_lock_watcher(app: AppHandle) {
             let wall_delta = now_wall.duration_since(*last_wall).unwrap_or_default();
             *last_wall = now_wall;
 
-            if *lock_on_sleep.lock().unwrap_or_else(|e| e.into_inner()) && wall_delta.as_secs() > POLL_SECS + 20 {
+            if *lock_on_sleep.lock().unwrap_or_else(|e| e.into_inner()) && wall_delta.as_secs() > POLL_SECS + 5 {
                 app.emit("sigil:lock", ()).ok();
                 *last_activity.lock().unwrap_or_else(|e| e.into_inner()) = Instant::now();
                 continue;

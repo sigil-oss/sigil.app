@@ -10,6 +10,7 @@ const ROUTE_DEPTH: Record<string, number> = {
   "/lock": 0,
   "/setup": 1,
   "/dashboard": 1,
+  "/request": 1,
   "/setup/create": 2,
   "/setup/import": 2,
   "/send": 2,

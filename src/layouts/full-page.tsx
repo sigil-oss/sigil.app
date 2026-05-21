@@ -14,7 +14,7 @@ export function FullPage({ children, centered = true, style }: FullPageProps) {
         display: "flex",
         flexDirection: "column",
         alignItems: centered ? "center" : "stretch",
-        justifyContent: centered ? "center" : "flex-start",
+        justifyContent: centered ? "safe center" : "flex-start",
         padding: "var(--space-8) var(--space-6)",
         background: "var(--color-bg-base)",
         overflowY: "auto",

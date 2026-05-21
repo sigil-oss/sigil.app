@@ -42,6 +42,7 @@ export default function VaultDetailScreen() {
 
   const [showHidden, setShowHidden] = useState(false);
   const [showExport, setShowExport] = useState(false);
+  const [hidingAccount, setHidingAccount] = useState<AccountMeta | null>(null);
 
   if (!vault) return null;
 
@@ -110,11 +111,25 @@ export default function VaultDetailScreen() {
   }
 
   function toggleHide(account: AccountMeta) {
+    if (!account.hidden) {
+      setHidingAccount(account);
+      return;
+    }
     updateVault(vault!.id, {
       accounts: vault!.accounts.map((a) =>
-        a.index === account.index ? { ...a, hidden: !a.hidden } : a,
+        a.index === account.index ? { ...a, hidden: false } : a,
       ),
     });
+  }
+
+  function confirmHide() {
+    if (!hidingAccount) return;
+    updateVault(vault!.id, {
+      accounts: vault!.accounts.map((a) =>
+        a.index === hidingAccount.index ? { ...a, hidden: true } : a,
+      ),
+    });
+    setHidingAccount(null);
   }
 
   async function doRemove() {
@@ -231,6 +246,20 @@ export default function VaultDetailScreen() {
           <Input label="Name" value={renameValue} onChange={(e) => setRenameValue(e.target.value)} onKeyDown={(e) => e.key === "Enter" && doRename()} autoFocus style={{ fontFamily: "var(--font-sans)" }} />
           <Button onClick={doRename} disabled={!renameValue.trim()}>Save</Button>
           <Button variant="ghost" shape="sharp" size="md" style={{ width: "auto", margin: "0 auto" }} onClick={() => setRenamingAccount(null)}>Cancel</Button>
+        </div>
+      </Modal>
+
+      {/* Hide confirmation modal */}
+      <Modal open={!!hidingAccount} onClose={() => setHidingAccount(null)}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
+          <div style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-body)", fontWeight: 500, color: "var(--color-text-display)" }}>
+            Hide {hidingAccount?.name}?
+          </div>
+          <div style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-body)", color: "var(--color-text-secondary)" }}>
+            The account will be removed from the switcher. It can be restored from this screen.
+          </div>
+          <Button onClick={confirmHide}>Hide account</Button>
+          <Button variant="ghost" shape="sharp" size="md" style={{ width: "auto", margin: "0 auto" }} onClick={() => setHidingAccount(null)}>Cancel</Button>
         </div>
       </Modal>
 

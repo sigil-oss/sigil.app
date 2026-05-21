@@ -43,7 +43,7 @@ body {
 
 /* ── Focus ring (keyboard nav) ───────────────────────────────────── */
 :focus-visible {
-  outline: 1px solid var(--color-text-display);
+  outline: 2px solid var(--color-text-display);
   outline-offset: 2px;
 }
 
