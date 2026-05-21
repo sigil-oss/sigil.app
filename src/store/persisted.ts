@@ -39,6 +39,8 @@ export interface ApprovedDapp {
   origin: string;
   name: string;
   approvedAt: number;
+  /** Stamped each time a permission is exercised — used to sort/prune stale dApp entries. */
+  lastUsedAt?: number;
   permissions: ("transfer" | "sc_call" | "sign_message")[];
 }
 
@@ -242,14 +244,15 @@ export const usePersistedStore = create<PersistedState>()(
 
       approveDapp: (dapp) =>
         set((s) => {
+          const now = Date.now();
           const existing = s.settings.approvedDapps.find((d) => d.origin === dapp.origin);
           const approvedDapps = existing
             ? s.settings.approvedDapps.map((d) =>
                 d.origin === dapp.origin
-                  ? { ...d, name: dapp.name, approvedAt: dapp.approvedAt, permissions: [...new Set([...d.permissions, ...dapp.permissions])] }
+                  ? { ...d, name: dapp.name, approvedAt: dapp.approvedAt, lastUsedAt: now, permissions: [...new Set([...d.permissions, ...dapp.permissions])] }
                   : d
               )
-            : [...s.settings.approvedDapps, dapp];
+            : [...s.settings.approvedDapps, { ...dapp, lastUsedAt: now }];
           return { settings: { ...s.settings, approvedDapps } };
         }),
 
