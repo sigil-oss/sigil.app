@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { Button } from "@/components/button";
 import { k12, verify, publicKeyToIdentity } from "@qubic.org/crypto";
 import { truncateId } from "@/lib/format";
+import { useSessionStore } from "@/store/session";
 
 export interface VerifyMessageRequest {
   message: string;
@@ -34,6 +35,7 @@ function base64ToBytes(b64: string): Uint8Array {
 export function VerifyMessagePreview({ request, onApprove, onReject }: VerifyMessagePreviewProps) {
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState("");
+  const wallets = useSessionStore((s) => s.wallets);
 
   const publicKeyBytes = useMemo(() => base64ToBytes(request.public_key), [request.public_key]);
 
@@ -44,6 +46,8 @@ export function VerifyMessagePreview({ request, onApprove, onReject }: VerifyMes
       return null;
     }
   }, [publicKeyBytes]);
+
+  const isOwnIdentity = claimedIdentity !== null && wallets.some((w) => w.identity === claimedIdentity);
 
   async function handleVerify() {
     setProcessing(true);
@@ -98,6 +102,7 @@ export function VerifyMessagePreview({ request, onApprove, onReject }: VerifyMes
           label="Claimed signer"
           value={invalidKey ? "[INVALID PUBLIC KEY]" : truncateId(claimedIdentity!, 10, 10)}
           valueColor={invalidKey ? "var(--color-status-error)" : undefined}
+          badge={!invalidKey ? (isOwnIdentity ? "[YOUR WALLET]" : "[EXTERNAL]") : undefined}
         />
         <Row label="Signature" value={truncateId(request.signature, 10, 10)} />
       </div>
@@ -124,15 +129,22 @@ export function VerifyMessagePreview({ request, onApprove, onReject }: VerifyMes
   );
 }
 
-function Row({ label, value, valueColor }: { label: string; value: string; valueColor?: string }) {
+function Row({ label, value, valueColor, badge }: { label: string; value: string; valueColor?: string; badge?: string }) {
   return (
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "var(--space-4)" }}>
       <span style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-label)", fontWeight: 500, color: "var(--color-text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em", flexShrink: 0 }}>
         {label}
       </span>
-      <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: valueColor ?? "var(--color-text-primary)", letterSpacing: "0.05em", textAlign: "right", wordBreak: "break-all" }}>
-        {value}
-      </span>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "var(--space-1)" }}>
+        <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: valueColor ?? "var(--color-text-primary)", letterSpacing: "0.05em", textAlign: "right", wordBreak: "break-all" }}>
+          {value}
+        </span>
+        {badge && (
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-disabled)", letterSpacing: "0.05em" }}>
+            {badge}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
