@@ -46,19 +46,24 @@ function WinBtn({
 export function TitleBar() {
   const win = useMemo(() => getCurrentWindow(), []);
   const [maximized, setMaximized] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
 
   useEffect(() => {
     win.isMaximized().then(setMaximized);
+    win.isFullscreen().then(setFullscreen);
     let unlisten: (() => void) | undefined;
     let active = true;
     win.listen("tauri://resize", async () => {
       setMaximized(await win.isMaximized());
+      setFullscreen(await win.isFullscreen());
     }).then((u) => {
       if (!active) u();
       else unlisten = u;
     });
     return () => { active = false; unlisten?.(); };
   }, [win]);
+
+  if (fullscreen) return null;
 
   return (
     <div

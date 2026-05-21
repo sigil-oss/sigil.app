@@ -98,6 +98,8 @@ export default function LockScreen() {
       })
     : null;
 
+  if (!vault) return null;
+
   return (
     <FullPage>
       <motion.div
