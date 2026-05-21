@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getRpcClient } from "@/lib/rpc";
 import { qk } from "@/lib/query-keys";
 
+/** Polls the active account balance every 5 s. Disabled when `identity` is nullish. */
 export function useBalance(identity: string | null | undefined) {
   return useQuery({
     queryKey: qk.balance(identity ?? null),

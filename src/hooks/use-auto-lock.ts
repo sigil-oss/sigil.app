@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { useSessionStore } from "@/store/session";
 import { usePersistedStore } from "@/store/persisted";
 
+/** Registers Tauri lock listeners, syncs auto-lock settings to Rust, and resets the activity timer on user interaction. */
 export function useAutoLock() {
   const navigate = useNavigate();
   const lock = useSessionStore((s) => s.lock);

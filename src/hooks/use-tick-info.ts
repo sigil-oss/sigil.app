@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getRpcClient } from "@/lib/rpc";
 import { qk } from "@/lib/query-keys";
 
+/** Polls current tick and epoch info every 5 s. Used as the network heartbeat. */
 export function useTickInfo() {
   return useQuery({
     queryKey: qk.tickInfo(),

@@ -40,6 +40,7 @@ function buildNotification(req: Record<string, unknown>): { title: string; body:
   }
 }
 
+/** Listens for `sigil:request` Tauri events and cold-start pending requests, routing to /request when unlocked. */
 export function useDeepLink() {
   const setPendingRequest = useSessionStore((s) => s.setPendingRequest);
   const isLocked = useSessionStore((s) => s.isLocked);

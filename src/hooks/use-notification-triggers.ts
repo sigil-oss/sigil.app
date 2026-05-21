@@ -10,6 +10,7 @@ import { notify } from "@/lib/notifications";
 import { truncateId } from "@/lib/format";
 import { qk } from "@/lib/query-keys";
 
+/** Fires desktop notifications on balance increases, tx broadcast, confirmation, and expiry. Also removes resolved pending txs. */
 export function useNotificationTriggers() {
   const wallets = useSessionStore((s) => s.wallets);
   const activeIndex = usePersistedStore((s) => s.settings.activeAccountIndex);

@@ -13,6 +13,7 @@ export interface SigningAccount {
   showPicker: boolean;
 }
 
+/** Resolves the wallet and account name for signing, optionally pinned to a specific `from` identity. */
 export function useSigningAccount(from?: string): SigningAccount {
   const wallets = useSessionStore((s) => s.wallets);
   const settings = usePersistedStore((s) => s.settings);
