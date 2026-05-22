@@ -1,5 +1,11 @@
 # sigil
 
+## 0.8.1
+
+### Patch Changes
+
+- da7a487: Show identity-based identicons next to each contact in the contacts list and contact picker.
+
 ## 0.8.0
 
 ### Minor Changes
