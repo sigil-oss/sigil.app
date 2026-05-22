@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { getVersion } from "@tauri-apps/api/app";
+import logoSrc from "../../src-tauri/icons/32x32.png";
 
 function WinBtn({
   onClick,
@@ -94,13 +95,7 @@ export function TitleBar() {
           pointerEvents: "none",
         }}
       >
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-          <polygon
-            points="6,1 11,6 6,11 1,6"
-            stroke="var(--color-status-success)"
-            strokeWidth="1.2"
-          />
-        </svg>
+        <img src={logoSrc} width={14} height={14} alt="" style={{ imageRendering: "pixelated", flexShrink: 0 }} />
         <span
           style={{
             fontFamily: "var(--font-mono)",

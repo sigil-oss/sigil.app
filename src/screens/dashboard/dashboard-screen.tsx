@@ -19,15 +19,7 @@ import { useLatestStats } from "@/hooks/use-latest-stats";
 import { Divider } from "@/components/divider";
 import { truncateId, formatQu, formatQuCompact } from "@/lib/format";
 import { qk } from "@/lib/query-keys";
-
-const VAULT_COLOR_CSS: Record<string, string> = {
-  slate: "var(--color-vault-slate)",
-  red: "var(--color-vault-red)",
-  amber: "var(--color-vault-amber)",
-  emerald: "var(--color-vault-emerald)",
-  sky: "var(--color-vault-sky)",
-  violet: "var(--color-vault-violet)",
-};
+import { Identicon } from "@/components/identicon";
 
 const HEALTH_COLOR: Record<string, string> = {
   healthy: "var(--color-status-success)",
@@ -114,12 +106,11 @@ export default function DashboardScreen() {
         aria-label={`Switch vault — ${vault?.name ?? "none"}`}
         style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", background: "none", border: "none", cursor: "pointer", padding: 0 }}
       >
-        <div
-          style={{
-            width: 8, height: 8, borderRadius: "50%",
-            background: vault ? (VAULT_COLOR_CSS[vault.color] ?? "var(--color-text-secondary)") : "var(--color-text-disabled)",
-          }}
-        />
+        {vault ? (
+          <Identicon seed={`${vault.id}:${vault.color}`} size={18} radius={3} />
+        ) : (
+          <div style={{ width: 18, height: 18, borderRadius: 3, background: "var(--color-text-disabled)" }} />
+        )}
         <span style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-label)", fontWeight: 500, color: "var(--color-text-primary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
           {vault?.name ?? "—"}
         </span>
