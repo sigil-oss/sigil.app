@@ -13,6 +13,7 @@ interface IdenticonProps {
   seed: string;
   size?: number;
   radius?: number;
+  padding?: number;
   style?: React.CSSProperties;
 }
 
@@ -21,7 +22,7 @@ interface IdenticonProps {
  * Columns 0↔4 and 1↔3 are mirrored; column 2 is the centre.
  * Uses 15 bits for the grid, 9 bits for hue — fully deterministic.
  */
-export function Identicon({ seed, size = 32, radius = 4, style }: IdenticonProps) {
+export function Identicon({ seed, size = 32, radius = 4, padding = 2, style }: IdenticonProps) {
   const gridHash = fnv1a(seed);
   const colorHash = fnv1a(seed + "\x00");
 
@@ -29,14 +30,15 @@ export function Identicon({ seed, size = 32, radius = 4, style }: IdenticonProps
   const fg = `hsl(${hue}, 65%, 58%)`;
   const bg = `hsl(${hue}, 22%, 11%)`;
 
-  const cs = size / 5; // cell size
+  const inner = size - padding * 2;
+  const cs = inner / 5; // cell size
 
   const cells: { x: number; y: number }[] = [];
   for (let row = 0; row < 5; row++) {
     for (let col = 0; col < 3; col++) {
       if (!((gridHash >>> (row * 3 + col)) & 1)) continue;
-      cells.push({ x: col * cs, y: row * cs });
-      if (col < 2) cells.push({ x: (4 - col) * cs, y: row * cs });
+      cells.push({ x: padding + col * cs, y: padding + row * cs });
+      if (col < 2) cells.push({ x: padding + (4 - col) * cs, y: padding + row * cs });
     }
   }
 
