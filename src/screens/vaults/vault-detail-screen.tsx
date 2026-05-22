@@ -9,7 +9,7 @@ import { Divider } from "@/components/divider";
 import { usePersistedStore, type AccountMeta } from "@/store/persisted";
 import { MAX_VAULT_ACCOUNTS } from "@/hooks/use-vault-balances";
 import { useSessionStore } from "@/store/session";
-import { generateRandomSeed } from "@/lib/crypto";
+import { generateRandomSeed, toSeed, InvalidSeedError, type Seed } from "@/lib/crypto";
 import { unlockVault, createVault, createWallet, exportVault } from "@/lib/vault";
 import { IdentityDisplay } from "@/components/identity-display";
 
@@ -28,7 +28,10 @@ export default function VaultDetailScreen() {
   const isActive = vault?.id === settings.activeVaultId;
 
   const [addingAccount, setAddingAccount] = useState(false);
+  const [addMode, setAddMode] = useState<"new" | "import">("new");
   const [addName, setAddName] = useState("");
+  const [addSeed, setAddSeed] = useState("");
+  const [addSeedError, setAddSeedError] = useState("");
   const [addPassword, setAddPassword] = useState("");
   const [addError, setAddError] = useState("");
   const [addLoading, setAddLoading] = useState(false);
@@ -70,7 +73,10 @@ export default function VaultDetailScreen() {
   const hidden = vault.accounts.filter((a) => a.hidden).sort((a, b) => a.index - b.index);
 
   function openAdd() {
+    setAddMode("new");
     setAddName("");
+    setAddSeed("");
+    setAddSeedError("");
     setAddPassword("");
     setAddError("");
     setAddingAccount(true);
@@ -78,11 +84,23 @@ export default function VaultDetailScreen() {
 
   async function doAdd() {
     if (!addName.trim()) return;
-    setAddLoading(true);
+    setAddSeedError("");
     setAddError("");
+
+    let seedToAdd: Seed | null = null;
+    if (addMode === "import") {
+      try {
+        seedToAdd = toSeed(addSeed.trim().toLowerCase());
+      } catch (e) {
+        setAddSeedError(e instanceof InvalidSeedError ? "55 LOWERCASE LETTERS REQUIRED" : "INVALID SEED");
+        return;
+      }
+    }
+
+    setAddLoading(true);
     try {
       const existingSeeds = await unlockVault(vault!.encryptedData, addPassword);
-      const newSeed = generateRandomSeed();
+      const newSeed = seedToAdd ?? generateRandomSeed();
       const newEncrypted = await createVault(addPassword, [...existingSeeds, newSeed]);
       const newIndex = existingSeeds.length;
       const newAccount: AccountMeta = { index: newIndex, name: addName.trim(), addedAt: Date.now(), hidden: false };
@@ -237,9 +255,35 @@ export default function VaultDetailScreen() {
           <div style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-body)", fontWeight: 500, color: "var(--color-text-display)" }}>
             Add account
           </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+            {(["new", "import"] as const).map((mode, i) => (
+              <>
+                {i > 0 && <span key="sep" style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-disabled)" }}>/</span>}
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => { setAddMode(mode); setAddSeed(""); setAddSeedError(""); }}
+                  style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", letterSpacing: "0.05em", padding: 0, color: addMode === mode ? "var(--color-text-display)" : "var(--color-text-disabled)" }}
+                >
+                  {mode === "new" ? "NEW SEED" : "IMPORT SEED"}
+                </button>
+              </>
+            ))}
+          </div>
           <Input label="Account name" value={addName} onChange={(e) => setAddName(e.target.value)} placeholder="e.g. DeFi, Staking" autoFocus style={{ fontFamily: "var(--font-sans)" }} />
+          {addMode === "import" && (
+            <Input
+              label="Seed (55 lowercase letters)"
+              type="password"
+              value={addSeed}
+              onChange={(e) => { setAddSeed(e.target.value); if (addSeedError) setAddSeedError(""); }}
+              error={addSeedError}
+              placeholder="55 characters, lowercase"
+              autoComplete="off"
+            />
+          )}
           <Input type="password" label="Vault password" value={addPassword} onChange={(e) => { setAddPassword(e.target.value); setAddError(""); }} onKeyDown={(e) => e.key === "Enter" && !addLoading && doAdd()} error={addError} placeholder="••••••••••" autoComplete="current-password" />
-          <Button onClick={doAdd} loading={addLoading} disabled={!addName.trim() || !addPassword}>Add account</Button>
+          <Button onClick={doAdd} loading={addLoading} disabled={!addName.trim() || !addPassword || (addMode === "import" && !addSeed.trim())}>Add account</Button>
           <Button variant="ghost" shape="sharp" size="md" style={{ width: "auto", margin: "0 auto" }} onClick={() => setAddingAccount(false)}>Cancel</Button>
         </div>
       </Modal>

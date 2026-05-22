@@ -7,8 +7,9 @@ import { Modal } from "@/components/modal";
 import { usePersistedStore, type VaultColor, type AccountMeta } from "@/store/persisted";
 import { useSessionStore } from "@/store/session";
 import { AlertTriangle } from "lucide-react";
-import { unlockVault, createWallet, type VaultData } from "@/lib/vault";
+import { unlockVault, createVault, createWallet, type VaultData } from "@/lib/vault";
 import { newId } from "@/lib/crypto";
+import { MAX_VAULT_ACCOUNTS } from "@/hooks/use-vault-balances";
 
 interface ImportFileData {
   name: string;
@@ -28,6 +29,7 @@ export default function WelcomeScreen() {
   const [importPw, setImportPw] = useState("");
   const [importError, setImportError] = useState("");
   const [importLoading, setImportLoading] = useState(false);
+  const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
 
   function openFilePicker() {
     const input = document.createElement("input");
@@ -40,12 +42,19 @@ export default function WelcomeScreen() {
         const text = await file.text();
         const parsed = JSON.parse(text);
         if (parsed.sigil !== 1 || !parsed.vault || !parsed.name?.trim()) throw new Error("bad format");
+        const accounts: AccountMeta[] = parsed.accounts ?? [];
         setImportData({
           name: parsed.name,
           color: parsed.color ?? "slate",
-          accounts: parsed.accounts ?? [],
+          accounts,
           vault: parsed.vault as VaultData,
         });
+        if (accounts.length > MAX_VAULT_ACCOUNTS) {
+          const sorted = [...accounts].sort((a, b) => a.index - b.index);
+          setSelectedIndices(new Set(sorted.slice(0, MAX_VAULT_ACCOUNTS).map((a) => a.index)));
+        } else {
+          setSelectedIndices(new Set());
+        }
         setImportPw("");
         setImportError("");
       } catch {
@@ -55,25 +64,49 @@ export default function WelcomeScreen() {
     input.click();
   }
 
+  function toggleAccount(index: number) {
+    setSelectedIndices((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) {
+        next.delete(index);
+      } else if (next.size < MAX_VAULT_ACCOUNTS) {
+        next.add(index);
+      }
+      return next;
+    });
+  }
+
   async function doImport() {
     if (!importData) return;
     setImportLoading(true);
     setImportError("");
     try {
-      const seeds = await unlockVault(importData.vault, importPw);
+      const allSeeds = await unlockVault(importData.vault, importPw);
+
+      let finalSeeds = allSeeds;
+      let finalAccounts = importData.accounts;
+      let finalEncryptedData: VaultData = importData.vault;
+
+      if (importData.accounts.length > MAX_VAULT_ACCOUNTS) {
+        const sortedSelected = [...selectedIndices].sort((a, b) => a - b);
+        finalSeeds = sortedSelected.map((i) => allSeeds[i]);
+        const byIndex = new Map(importData.accounts.map((a) => [a.index, a]));
+        finalAccounts = sortedSelected.map((origIdx, newIdx) => ({ ...byIndex.get(origIdx)!, index: newIdx }));
+        finalEncryptedData = await createVault(importPw, finalSeeds);
+      }
+
       const newVaultId = newId();
-      const wallets = seeds.map(createWallet);
       addVault({
         id: newVaultId,
         name: importData.name,
         color: importData.color,
         createdAt: Date.now(),
         lastUnlockedAt: Date.now(),
-        accounts: importData.accounts,
-        encryptedData: importData.vault,
+        accounts: finalAccounts,
+        encryptedData: finalEncryptedData,
       });
       setActiveVault(newVaultId);
-      unlock(newVaultId, seeds, wallets);
+      unlock(newVaultId, finalSeeds, finalSeeds.map(createWallet));
       navigate("/dashboard", { replace: true });
     } catch {
       setImportError("WRONG PASSWORD");
@@ -148,22 +181,58 @@ export default function WelcomeScreen() {
               Import {importData?.name}
             </div>
             <div style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-disabled)", letterSpacing: "0.05em" }}>
-              {importData?.accounts.length ?? 0}{" "}
-              {(importData?.accounts.length ?? 0) === 1 ? "ACCOUNT" : "ACCOUNTS"}
+              {importData && importData.accounts.length > MAX_VAULT_ACCOUNTS
+                ? `${selectedIndices.size} / ${MAX_VAULT_ACCOUNTS} SELECTED`
+                : `${importData?.accounts.length ?? 0} ${(importData?.accounts.length ?? 0) === 1 ? "ACCOUNT" : "ACCOUNTS"}`}
             </div>
           </div>
+
+          {importData && importData.accounts.length > MAX_VAULT_ACCOUNTS && (
+            <div style={{ maxHeight: 196, overflowY: "auto", display: "flex", flexDirection: "column" }}>
+              {[...importData.accounts].sort((a, b) => a.index - b.index).map((account) => {
+                const selected = selectedIndices.has(account.index);
+                const atLimit = !selected && selectedIndices.size >= MAX_VAULT_ACCOUNTS;
+                return (
+                  <button
+                    key={account.index}
+                    type="button"
+                    onClick={() => toggleAccount(account.index)}
+                    disabled={atLimit}
+                    style={{
+                      display: "flex", alignItems: "center", gap: "var(--space-3)",
+                      background: "none", border: "none", textAlign: "left",
+                      padding: "var(--space-2) 0", cursor: atLimit ? "not-allowed" : "pointer",
+                      opacity: atLimit ? 0.35 : 1,
+                    }}
+                  >
+                    <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", letterSpacing: "0.05em", flexShrink: 0, width: 14, color: selected ? "var(--color-text-display)" : "var(--color-text-disabled)" }}>
+                      {selected ? "✓" : "○"}
+                    </span>
+                    <span style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-body)", color: selected ? "var(--color-text-display)" : "var(--color-text-secondary)" }}>
+                      {account.name}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
           <Input
             type="password"
             label="Vault password"
             value={importPw}
             onChange={(e) => { setImportPw(e.target.value); setImportError(""); }}
-            onKeyDown={(e) => e.key === "Enter" && doImport()}
+            onKeyDown={(e) => e.key === "Enter" && !importLoading && doImport()}
             error={importError}
             placeholder="••••••••••"
             autoComplete="current-password"
             autoFocus
           />
-          <Button onClick={doImport} loading={importLoading} disabled={!importPw}>
+          <Button
+            onClick={doImport}
+            loading={importLoading}
+            disabled={!importPw || (importData !== null && importData.accounts.length > MAX_VAULT_ACCOUNTS && selectedIndices.size === 0)}
+          >
             Import vault
           </Button>
           <Button variant="ghost" shape="sharp" size="md" style={{ width: "auto", margin: "0 auto" }} onClick={() => setImportData(null)}>
