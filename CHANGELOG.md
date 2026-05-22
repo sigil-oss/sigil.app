@@ -1,5 +1,17 @@
 # sigil
 
+## 0.8.0
+
+### Minor Changes
+
+- e01dba8: Add FNV-1a identicons for vault cards and account addresses. Redesign vault list with colored left border rail, per-card ⋮ action panel, and sorted by last unlock. Show app version in title bar. Switch to eager route imports to fix animation stutter on first navigation.
+- e01dba8: Balance-increase notifications now fire for all vault accounts (not just the active one). New "Notify when locked" setting keeps polling and notifying after the vault is locked.
+- e01dba8: Add account by imported seed in vault detail; show account picker when importing a vault file with more than 16 accounts (pre-selects first 16, enforces the cap).
+
+### Patch Changes
+
+- e01dba8: Fix identicons rendering on transaction hashes in history detail. Remove duplicate identicon in vault account rows. Replace hand-drawn rhombus with actual app icon in title bar; show vault identicon instead of color dot in dashboard header.
+
 ## 0.7.0
 
 ### Minor Changes
