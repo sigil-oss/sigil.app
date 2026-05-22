@@ -496,7 +496,7 @@ function TxDetail({ detail, identity, currentTick, txMemos }: {
         <DetailRow label="From">{detail.source ? <IdentityDisplay identity={detail.source} /> : <Dash />}</DetailRow>
         <DetailRow label="To">{detail.destination ? <IdentityDisplay identity={detail.destination} /> : <Dash />}</DetailRow>
         <DetailRow label="Target tick"><MonoVal>{detail.targetTick}</MonoVal></DetailRow>
-        {detail.hash && <DetailRow label="Hash"><IdentityDisplay identity={detail.hash} /></DetailRow>}
+        {detail.hash && <DetailRow label="Hash"><IdentityDisplay identity={detail.hash} showIdenticon={false} /></DetailRow>}
       </div>
     );
   }
@@ -516,7 +516,7 @@ function TxDetail({ detail, identity, currentTick, txMemos }: {
       <DetailRow label="From">{detail.source ? <IdentityDisplay identity={detail.source} /> : <Dash />}</DetailRow>
       <DetailRow label="To">{detail.destination ? <IdentityDisplay identity={detail.destination} /> : <Dash />}</DetailRow>
       <DetailRow label="Tick"><MonoVal>{detail.tickNumber ?? "—"}</MonoVal></DetailRow>
-      {detail.hash && <DetailRow label="Hash"><IdentityDisplay identity={detail.hash} /></DetailRow>}
+      {detail.hash && <DetailRow label="Hash"><IdentityDisplay identity={detail.hash} showIdenticon={false} /></DetailRow>}
 
       {hash && (
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>

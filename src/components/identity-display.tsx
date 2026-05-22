@@ -8,9 +8,10 @@ import { Identicon } from "@/components/identicon";
 export interface IdentityDisplayProps {
   identity: string;
   style?: CSSProperties;
+  showIdenticon?: boolean;
 }
 
-export function IdentityDisplay({ identity, style }: IdentityDisplayProps) {
+export function IdentityDisplay({ identity, style, showIdenticon = true }: IdentityDisplayProps) {
   const clearSecs = usePersistedStore((s) => s.settings.clipboardClearSeconds);
   const [expanded, setExpanded] = useState(false);
   const [flash, setFlash] = useState(false);
@@ -65,7 +66,7 @@ export function IdentityDisplay({ identity, style }: IdentityDisplayProps) {
   return (
     <div style={style}>
       <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
-        {!expanded && <Identicon seed={identity} size={18} radius={3} style={{ flexShrink: 0 }} />}
+        {showIdenticon && !expanded && <Identicon seed={identity} size={18} radius={3} style={{ flexShrink: 0 }} />}
         <motion.button
           animate={{ opacity: flash ? 0.6 : 1 }}
           transition={{ duration: 0.1, ease: [0, 0, 0.2, 1] }}
