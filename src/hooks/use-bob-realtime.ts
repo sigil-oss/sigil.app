@@ -7,10 +7,12 @@ import { usePersistedStore } from "@/store/persisted";
 import { useSessionStore } from "@/store/session";
 import { qk } from "@/lib/query-keys";
 
+const INVALIDATE_DEBOUNCE_MS = 2_000;
+
 /**
  * When Bob is enabled and healthy, subscribes to transfer events for the active identity via WebSocket.
- * Each live event immediately invalidates balance and tx-history caches, replacing polling latency
- * with push-based invalidation. Falls back to normal polling when Bob is disabled or lagging.
+ * Live events are coalesced into a short debounce window so a noisy Bob socket
+ * cannot trigger unbounded query invalidation storms.
  */
 export function useBobRealtime(): void {
   const network = usePersistedStore((s) => s.settings.network);
@@ -30,6 +32,16 @@ export function useBobRealtime(): void {
 
     const ac = new AbortController();
     let client: ReturnType<typeof createBobSubscriptionClient> | null = null;
+    let invalidateTimer: ReturnType<typeof setTimeout> | null = null;
+
+    function scheduleInvalidate() {
+      if (invalidateTimer) return;
+      invalidateTimer = setTimeout(() => {
+        invalidateTimer = null;
+        queryClient.invalidateQueries({ queryKey: qk.balance(identity) });
+        queryClient.invalidateQueries({ queryKey: qk.txHistory(identity) });
+      }, INVALIDATE_DEBOUNCE_MS);
+    }
 
     (async () => {
       try {
@@ -42,8 +54,7 @@ export function useBobRealtime(): void {
           { signal: ac.signal },
         )) {
           if (event.isCatchUp) continue;
-          queryClient.invalidateQueries({ queryKey: qk.balance(identity) });
-          queryClient.invalidateQueries({ queryKey: qk.txHistory(identity) });
+          scheduleInvalidate();
         }
       } catch {
         // non-critical
@@ -52,6 +63,7 @@ export function useBobRealtime(): void {
 
     return () => {
       ac.abort();
+      if (invalidateTimer) clearTimeout(invalidateTimer);
       client?.close();
     };
   }, [active, identity, wsUrl, queryClient]);
