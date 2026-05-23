@@ -6,11 +6,12 @@ import { Fingerprint } from "lucide-react";
 import { motion } from "motion/react";
 import { usePersistedStore } from "@/store/persisted";
 import { useSessionStore } from "@/store/session";
-import { unlockVault, createWallet } from "@/lib/vault";
+import { unlockVault, createWallet, toSeed } from "@/lib/vault";
 import { extractMessage } from "@/lib/format";
 import { FullPage } from "@/layouts/full-page";
 import { Button } from "@/components/button";
 import { Input } from "@/components/input";
+import type { Seed } from "@/lib/crypto";
 
 interface FormValues {
   password: string;
@@ -45,14 +46,19 @@ export default function LockScreen() {
 
   const { register, handleSubmit } = useForm<FormValues>();
 
-  async function doUnlock(password: string) {
+  async function finishUnlock(seeds: Seed[]) {
     if (!vault) return;
-    const seeds = await unlockVault(vault.encryptedData, password);
     const wallets = seeds.map(createWallet);
     unlock(vault.id, seeds, wallets);
     touchVaultUnlocked(vault.id);
     _bioFailures = 0;
     navigate(hasPendingRequest ? "/request" : "/dashboard", { replace: true });
+  }
+
+  async function doUnlock(password: string) {
+    if (!vault) return;
+    const seeds = await unlockVault(vault.encryptedData, password);
+    await finishUnlock(seeds);
   }
 
   async function onSubmit({ password }: FormValues) {
@@ -73,8 +79,11 @@ export default function LockScreen() {
     setLoading(true);
     setError("");
     try {
-      const password = await invoke<string>("biometric_unlock", { vaultId: vault.id });
-      await doUnlock(password);
+      const seeds = await invoke<string[]>("biometric_unlock", {
+        vaultId: vault.id,
+        vaultData: vault.encryptedData,
+      });
+      await finishUnlock(seeds.map(toSeed));
     } catch (e) {
       const next = bioFailures + 1;
       _bioFailures = next;

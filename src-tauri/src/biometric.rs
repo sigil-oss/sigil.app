@@ -1,4 +1,5 @@
 use tauri::command;
+use crate::vault_crypto::{decrypt_vault_data, VaultData};
 
 // ── Credential storage ─────────────────────────────────────────────────────
 //
@@ -246,10 +247,11 @@ pub async fn enable_biometric(vault_id: String, password: String) -> Result<(), 
 }
 
 #[command]
-pub async fn biometric_unlock(vault_id: String) -> Result<String, String> {
+pub async fn biometric_unlock(vault_id: String, vault_data: VaultData) -> Result<Vec<String>, String> {
     tokio::task::spawn_blocking(move || {
         platform::authenticate("Unlock Sigil vault")?;
-        cred_store::load(&vault_id)
+        let password = cred_store::load(&vault_id)?;
+        decrypt_vault_data(&vault_data, &password)
     })
     .await
     .map_err(|e| e.to_string())?

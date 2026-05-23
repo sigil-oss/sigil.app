@@ -4,6 +4,7 @@ mod clipboard;
 mod commands;
 mod deep_link;
 mod store_crypto;
+mod vault_crypto;
 
 use std::sync::atomic::Ordering;
 
@@ -124,6 +125,8 @@ pub fn run() {
             commands::set_hide_to_tray,
             store_crypto::encrypt_store_value,
             store_crypto::decrypt_store_value,
+            vault_crypto::encrypt_vault,
+            vault_crypto::decrypt_vault,
             biometric::check_biometric_available,
             biometric::enable_biometric,
             biometric::biometric_unlock,

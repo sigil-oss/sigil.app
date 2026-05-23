@@ -1,0 +1,91 @@
+use aes_gcm::aead::{Aead, OsRng, rand_core::RngCore};
+use aes_gcm::{Aes256Gcm, KeyInit, Nonce};
+use pbkdf2::pbkdf2_hmac;
+use serde::{Deserialize, Serialize};
+use sha2::Sha256;
+use tauri::command;
+
+const VAULT_VERSION: u32 = 1;
+const PBKDF2_ITERATIONS: u32 = 600_000;
+const SALT_BYTES: usize = 16;
+const IV_BYTES: usize = 12;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VaultData {
+    pub version: u32,
+    pub iterations: u32,
+    pub salt: String,
+    pub iv: String,
+    pub ciphertext: String,
+}
+
+#[derive(Serialize, Deserialize)]
+struct VaultPayload {
+    seeds: Vec<String>,
+}
+
+fn derive_key(password: &str, salt: &[u8], iterations: u32) -> [u8; 32] {
+    let mut key = [0u8; 32];
+    pbkdf2_hmac::<Sha256>(password.as_bytes(), salt, iterations, &mut key);
+    key
+}
+
+pub fn encrypt_vault_data(password: &str, seeds: &[String]) -> Result<VaultData, String> {
+    let mut salt = [0u8; SALT_BYTES];
+    let mut iv = [0u8; IV_BYTES];
+    OsRng.fill_bytes(&mut salt);
+    OsRng.fill_bytes(&mut iv);
+
+    let key = derive_key(password, &salt, PBKDF2_ITERATIONS);
+    let cipher = Aes256Gcm::new_from_slice(&key).map_err(|e| e.to_string())?;
+    let plaintext = serde_json::to_vec(&VaultPayload {
+        seeds: seeds.to_vec(),
+    })
+    .map_err(|e| e.to_string())?;
+    let ciphertext = cipher
+        .encrypt(Nonce::from_slice(&iv), plaintext.as_ref())
+        .map_err(|_| "vault encryption failed".to_string())?;
+
+    Ok(VaultData {
+        version: VAULT_VERSION,
+        iterations: PBKDF2_ITERATIONS,
+        salt: hex::encode(salt),
+        iv: hex::encode(iv),
+        ciphertext: hex::encode(ciphertext),
+    })
+}
+
+pub fn decrypt_vault_data(vault_data: &VaultData, password: &str) -> Result<Vec<String>, String> {
+    if vault_data.version != VAULT_VERSION {
+        return Err(format!("unsupported version {}", vault_data.version));
+    }
+
+    let salt = hex::decode(&vault_data.salt).map_err(|_| "malformed salt".to_string())?;
+    let iv = hex::decode(&vault_data.iv).map_err(|_| "malformed iv".to_string())?;
+    let ciphertext =
+        hex::decode(&vault_data.ciphertext).map_err(|_| "malformed ciphertext".to_string())?;
+
+    let key = derive_key(password, &salt, vault_data.iterations);
+    let cipher = Aes256Gcm::new_from_slice(&key).map_err(|e| e.to_string())?;
+    let plaintext = cipher
+        .decrypt(Nonce::from_slice(&iv), ciphertext.as_ref())
+        .map_err(|_| "vault decryption failed".to_string())?;
+
+    let payload: VaultPayload =
+        serde_json::from_slice(&plaintext).map_err(|_| "vault payload is invalid".to_string())?;
+    Ok(payload.seeds)
+}
+
+#[command]
+pub async fn encrypt_vault(password: String, seeds: Vec<String>) -> Result<VaultData, String> {
+    tokio::task::spawn_blocking(move || encrypt_vault_data(&password, &seeds))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[command]
+pub async fn decrypt_vault(vault_data: VaultData, password: String) -> Result<Vec<String>, String> {
+    tokio::task::spawn_blocking(move || decrypt_vault_data(&vault_data, &password))
+        .await
+        .map_err(|e| e.to_string())?
+}
