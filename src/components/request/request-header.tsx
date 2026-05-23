@@ -1,6 +1,5 @@
 import { Lock, ShieldAlert } from "lucide-react";
 import { Tag } from "@/components/tag";
-import type { ApprovedDapp } from "@/store/persisted";
 
 export interface DappInfo {
   name: string;
@@ -10,11 +9,9 @@ export interface DappInfo {
 
 interface RequestHeaderProps {
   dapp: DappInfo;
-  approvedDapps: ApprovedDapp[];
 }
 
-export function RequestHeader({ dapp, approvedDapps }: RequestHeaderProps) {
-  const isApproved = approvedDapps.some((d) => d.origin === dapp.origin);
+export function RequestHeader({ dapp }: RequestHeaderProps) {
   const isHttps = dapp.origin.startsWith("https://");
   const isLocalhost =
     dapp.origin.startsWith("http://localhost") ||
@@ -34,20 +31,18 @@ export function RequestHeader({ dapp, approvedDapps }: RequestHeaderProps) {
             {dapp.origin}
           </span>
         </div>
-        <Tag variant={isApproved ? "neutral" : "warning"}>
-          {isApproved ? "APPROVED" : "FIRST TIME"}
-        </Tag>
+        <Tag variant="warning">UNVERIFIED</Tag>
       </div>
 
       <div style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-body)", fontWeight: 500, color: "var(--color-text-display)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
         {dapp.name}
       </div>
 
-      {!isSecure && (
-        <div style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-status-error)", letterSpacing: "0.05em" }}>
-          [WARNING: INSECURE CONNECTION]
-        </div>
-      )}
+      <div style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: isSecure ? "var(--color-text-secondary)" : "var(--color-status-error)", letterSpacing: "0.05em" }}>
+        {isSecure
+          ? "[ORIGIN IS SELF-REPORTED. VERIFY THE DAPP BEFORE APPROVING.]"
+          : "[WARNING: INSECURE ORIGIN. DEEP-LINK ORIGIN IS SELF-REPORTED.]"}
+      </div>
     </div>
   );
 }

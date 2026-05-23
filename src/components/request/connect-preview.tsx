@@ -32,7 +32,6 @@ export function ConnectPreview({ dappName, dappOrigin, request, onApprove, onRej
   const wallets = useSessionStore((s) => s.wallets);
   const settings = usePersistedStore((s) => s.settings);
   const vault = usePersistedStore((s) => s.vaults.find((v) => v.id === s.settings.activeVaultId));
-  const approveDapp = usePersistedStore((s) => s.approveDapp);
 
   const [selectedIndex, setSelectedIndex] = useState(settings.activeAccountIndex);
 
@@ -52,13 +51,6 @@ export function ConnectPreview({ dappName, dappOrigin, request, onApprove, onRej
   function approve() {
     if (!selectedWallet) return;
     const permissions = requestedPerms.filter((p) => grantedPerms.has(p)) as ("transfer" | "sc_call" | "sign_message")[];
-    approveDapp({
-      origin: dappOrigin,
-      name: dappName,
-      approvedAt: Date.now(),
-      permissions,
-    });
-
     onApprove({ identity: selectedWallet.identity, permissions });
   }
 
@@ -66,6 +58,10 @@ export function ConnectPreview({ dappName, dappOrigin, request, onApprove, onRej
     <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
       <div style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-body)", color: "var(--color-text-primary)" }}>
         This dApp wants to know your identity.
+      </div>
+
+      <div style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-status-warning)", letterSpacing: "0.05em" }}>
+        [{dappName || dappOrigin} IS UNVERIFIED. SIGIL DOES NOT PERSIST TRUST FOR DEEP-LINK ORIGINS.]
       </div>
 
       {/* Account picker */}

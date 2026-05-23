@@ -315,10 +315,11 @@ export const usePersistedStore = create<PersistedState>()(
           ps.txMemos && typeof ps.txMemos === "object" && !Array.isArray(ps.txMemos)
             ? ps.txMemos
             : currentState.txMemos;
-        const settings =
+        const settingsBase =
           ps.settings && typeof ps.settings === "object" && !Array.isArray(ps.settings)
             ? { ...currentState.settings, ...ps.settings }
             : currentState.settings;
+        const settings = { ...settingsBase, approvedDapps: [] };
         return { ...currentState, vaults, contacts, pendingTxs, txMemos, settings };
       },
     },

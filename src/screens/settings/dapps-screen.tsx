@@ -29,8 +29,9 @@ export default function DappsScreen() {
   return (
     <AppShell statusBar={statusBar} contentStyle={{ padding: "var(--space-6)", display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
       {approvedDapps.length === 0 ? (
-        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-disabled)", letterSpacing: "0.05em" }}>
-          [NO APPROVED DAPPS]
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "var(--space-3)", fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-disabled)", letterSpacing: "0.05em", textAlign: "center" }}>
+          <div>[NO APPROVED DAPPS]</div>
+          <div>[DEEP-LINK TRUST IS DISABLED UNTIL REQUEST ORIGINS CAN BE AUTHENTICATED.]</div>
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>

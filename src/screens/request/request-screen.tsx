@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { invoke } from "@tauri-apps/api/core";
 import { Button } from "@/components/button";
@@ -11,7 +11,6 @@ import { ScCallPreview, type ScCallRequest } from "@/components/request/sc-call-
 import { SignMessagePreview, type SignMessageApproveResult, type SignMessageRequest } from "@/components/request/sign-message-preview";
 import { ConnectPreview, type ConnectApproveResult, type ConnectRequest } from "@/components/request/connect-preview";
 import { VerifyMessagePreview, type VerifyMessageResult, type VerifyMessageRequest } from "@/components/request/verify-message-preview";
-import { usePersistedStore } from "@/store/persisted";
 import { useSessionStore } from "@/store/session";
 import { ScreenHeader } from "@/components/screen-header";
 
@@ -73,10 +72,6 @@ interface SuccessState {
 export default function RequestScreen() {
   const navigate = useNavigate();
 
-  const approvedDapps = usePersistedStore((s) => s.settings.approvedDapps);
-  // Capture approvedDapps at mount so the permission check runs once per
-  // request, not on every store update (which would re-reject mid-review).
-  const approvedDappsRef = useRef(approvedDapps);
   const pendingRequest = useSessionStore((s) => s.pendingRequest);
   const setPendingRequest = useSessionStore((s) => s.setPendingRequest);
 
@@ -105,35 +100,6 @@ export default function RequestScreen() {
     }, msUntilExp);
     return () => clearTimeout(t);
   }, [envelope?.request.exp, success, setPendingRequest]);
-
-  // Enforce dApp permissions: if origin is already approved but lacks the
-  // required permission for this request type, auto-reject immediately.
-  // Uses a ref snapshot so changing approvedDapps while reviewing doesn't
-  // re-run this effect and silently navigate away.
-  useEffect(() => {
-    if (!envelope || success) return;
-    approvedDappsRef.current = approvedDapps;
-    const { type: reqType, dapp, nonce } = envelope.request;
-    if (reqType === "connect" || reqType === "verify_message") return;
-
-    const approval = approvedDappsRef.current.find((d) => d.origin === dapp.origin);
-    if (!approval) return; // unknown dApp — let user review
-
-    const needed = reqType as "transfer" | "sc_call" | "sign_message";
-    if (!approval.permissions.includes(needed)) {
-      invoke("clear_pending_request").catch(() => {});
-      const body = JSON.stringify({
-        status: "rejected",
-        nonce,
-        type: reqType,
-        reason: "permission_denied",
-      });
-      if (envelope.callback) {
-        invoke("post_callback", { url: envelope.callback, body }).catch(() => {});
-      }
-      setPendingRequest(null);
-    }
-  }, [envelope, success, setPendingRequest]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Dismiss without notifying the dApp — used by the BACK button so navigating
   // away doesn't send a spurious rejection to the dApp.
@@ -362,7 +328,7 @@ export default function RequestScreen() {
 
   return (
     <SheetLayout statusBar={statusBar}>
-      <RequestHeader dapp={request.dapp} approvedDapps={approvedDapps} />
+      <RequestHeader dapp={request.dapp} />
       <Divider />
 
       {request.type === "transfer" ? (
