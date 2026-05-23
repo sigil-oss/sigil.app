@@ -4,6 +4,10 @@ import {
   sendNotification as tauriSend,
 } from "@tauri-apps/plugin-notification";
 
+function stripNotificationMarkup(value: string): string {
+  return value.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
+}
+
 export async function notify(title: string, body: string): Promise<void> {
   try {
     let granted = await isPermissionGranted();
@@ -13,7 +17,10 @@ export async function notify(title: string, body: string): Promise<void> {
       granted = res === "granted";
     }
     if (!granted) return;
-    tauriSend({ title, body });
+    tauriSend({
+      title: stripNotificationMarkup(title),
+      body: stripNotificationMarkup(body),
+    });
   } catch {
     // non-critical
   }
