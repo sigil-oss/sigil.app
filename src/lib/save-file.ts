@@ -13,8 +13,13 @@ export async function saveFileDialog(
   content: string,
   filters: { name: string; extensions: string[] }[] = [{ name: "JSON", extensions: ["json"] }],
 ): Promise<boolean> {
-  const path = await save({ defaultPath: sanitizeDefaultName(defaultName), filters });
-  if (!path) return false;
-  await writeTextFile(path, content);
-  return true;
+  try {
+    const path = await save({ defaultPath: sanitizeDefaultName(defaultName), filters });
+    if (!path) return false;
+    await writeTextFile(path, content);
+    return true;
+  } catch (err) {
+    console.error("[sigil] save file failed:", err);
+    return false;
+  }
 }
