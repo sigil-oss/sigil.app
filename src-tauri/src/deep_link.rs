@@ -149,9 +149,10 @@ fn validate(uri_str: &str) -> Result<ParsedRequest, String> {
             let to = value["to"].as_str().ok_or("transfer: missing 'to'")?;
             // Qubic identities are exactly 60 uppercase A-Z characters
             if to.len() != 60 || !to.bytes().all(|b| b.is_ascii_uppercase()) {
+                let preview: String = to.chars().take(8).collect();
                 return Err(format!(
                     "transfer: 'to' must be 60 uppercase letters, got '{}'",
-                    &to[..to.len().min(8)]
+                    preview
                 ));
             }
             let amount = value["amount"].as_i64().ok_or("transfer: missing 'amount'")?;
