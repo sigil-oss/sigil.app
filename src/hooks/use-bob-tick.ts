@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { createBobSubscriptionClient } from "@qubic.org/bob";
+import { validateBobWsUrl } from "@/lib/bob-client";
 import { usePersistedStore } from "@/store/persisted";
 import { useSessionStore } from "@/store/session";
 
@@ -22,13 +23,13 @@ export function useBobTick(): void {
       return;
     }
 
-    const wsUrl = network.bobWsUrl.trim();
     const ac = new AbortController();
     abortRef.current = ac;
     let active = true;
 
     (async () => {
       try {
+        const wsUrl = validateBobWsUrl(network.bobWsUrl!.trim());
         const client = createBobSubscriptionClient({ wsUrl, autoReconnect: true });
         for await (const event of client.subscribeNewTicks({ signal: ac.signal })) {
           if (!active) break;

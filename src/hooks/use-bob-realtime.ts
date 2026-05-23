@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { createBobSubscriptionClient } from "@qubic.org/bob";
 import type { Identity } from "@qubic.org/types";
+import { validateBobWsUrl } from "@/lib/bob-client";
 import { usePersistedStore } from "@/store/persisted";
 import { useSessionStore } from "@/store/session";
 import { qk } from "@/lib/query-keys";
@@ -28,10 +29,14 @@ export function useBobRealtime(): void {
     if (!active || !identity || !wsUrl) return;
 
     const ac = new AbortController();
-    const client = createBobSubscriptionClient({ wsUrl, autoReconnect: true });
+    let client: ReturnType<typeof createBobSubscriptionClient> | null = null;
 
     (async () => {
       try {
+        client = createBobSubscriptionClient({
+          wsUrl: validateBobWsUrl(wsUrl),
+          autoReconnect: true,
+        });
         for await (const event of client.subscribeTransfers(
           { identity: identity as Identity },
           { signal: ac.signal },
@@ -47,7 +52,7 @@ export function useBobRealtime(): void {
 
     return () => {
       ac.abort();
-      client.close();
+      client?.close();
     };
   }, [active, identity, wsUrl, queryClient]);
 }
