@@ -154,7 +154,11 @@ fn validate(uri_str: &str) -> Result<ParsedRequest, String> {
     let dapp_origin = value["dapp"]["origin"]
         .as_str()
         .ok_or("missing 'dapp.origin'")?;
-    Url::parse(dapp_origin).map_err(|_| format!("invalid dapp.origin: {dapp_origin}"))?;
+    let parsed_origin =
+        Url::parse(dapp_origin).map_err(|_| format!("invalid dapp.origin: {dapp_origin}"))?;
+    if parsed_origin.scheme() != "https" {
+        return Err("dapp.origin must use HTTPS".into());
+    }
 
     // Expiry check: missing exp defaults to 5 minutes from receipt; exp too far in
     // the future is clamped so dApps cannot create permanent requests.
