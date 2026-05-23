@@ -131,17 +131,16 @@ const DEFAULT_SETTINGS: AppSettings = {
 
 const _disk = new LazyStore("sigil.json");
 
-const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T | null> =>
-  Promise.race([promise, new Promise<null>((resolve) => setTimeout(() => resolve(null), ms))]);
-
 const tauriStorage: StateStorage = {
   getItem: async (name) => {
     try {
-      const raw = (await withTimeout(_disk.get<string>(name), 1500)) ?? null;
+      const raw = await _disk.get<string>(name);
       if (raw === null) return null;
       return await invoke<string>("decrypt_store_value", { value: raw });
-    } catch {
-      return null;
+    } catch (err) {
+      console.error("[sigil] disk read failed:", err);
+      window.dispatchEvent(new CustomEvent("sigil:disk-read-error"));
+      throw err;
     }
   },
   setItem: async (name, value) => {
