@@ -38,6 +38,15 @@ fn load_store_key_file() -> Result<Option<String>, String> {
     }
 }
 
+fn delete_store_key_file() -> Result<(), String> {
+    let path = store_key_path()?;
+    match std::fs::remove_file(path) {
+        Ok(()) => Ok(()),
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(err) => Err(err.to_string()),
+    }
+}
+
 fn store_key_file(secret: &str) -> Result<(), String> {
     let path = store_key_path()?;
     let parent = path
@@ -90,6 +99,28 @@ mod secret_store {
         s.encode_utf16().chain(std::iter::once(0)).collect()
     }
 
+    pub fn store(target_name: &str, secret: &str) -> Result<(), String> {
+        let target = to_wide(target_name);
+        let mut blob = secret.as_bytes().to_vec();
+
+        let cred = CREDENTIALW {
+            Flags: CRED_FLAGS(0),
+            Type: CRED_TYPE_GENERIC,
+            TargetName: PWSTR(target.as_ptr() as *mut u16),
+            Comment: PWSTR::null(),
+            LastWritten: FILETIME::default(),
+            CredentialBlobSize: blob.len() as u32,
+            CredentialBlob: blob.as_mut_ptr(),
+            Persist: CRED_PERSIST_LOCAL_MACHINE,
+            AttributeCount: 0,
+            Attributes: std::ptr::null_mut(),
+            TargetAlias: PWSTR::null(),
+            UserName: PWSTR::null(),
+        };
+
+        unsafe { CredWriteW(&cred, 0).map_err(|e| format!("CredWriteW: {e}")) }
+    }
+
     pub fn load(target_name: &str) -> Result<String, String> {
         let target = to_wide(target_name);
         let mut pcred: *mut CREDENTIALW = std::ptr::null_mut();
@@ -135,59 +166,80 @@ mod secret_store {
         }
     }
 
+    pub fn store(target_name: &str, secret: &str) -> Result<(), String> {
+        let entry = entry(target_name)?;
+        entry.set_password(secret).map_err(|e| e.to_string())?;
+        entry
+            .get_password()
+            .map_err(|e| format!("stored but unreadable: {e}"))?;
+        Ok(())
+    }
+
+}
+
+fn decode_store_key(encoded: &str, label: &str) -> Result<[u8; 32], String> {
+    let decoded = URL_SAFE_NO_PAD
+        .decode(encoded)
+        .map_err(|e| format!("invalid {label}: {e}"))?;
+    decoded
+        .try_into()
+        .map_err(|_| format!("invalid {label} length"))
+}
+
+fn migrate_file_key_to_secure_store(encoded: &str) -> Result<[u8; 32], String> {
+    let key = decode_store_key(encoded, "stored metadata key file")?;
+    match secret_store::store(STORE_KEY_TARGET, encoded) {
+        Ok(()) => {
+            let _ = delete_store_key_file();
+            Ok(key)
+        }
+        Err(err) => {
+            eprintln!(
+                "[sigil] secure metadata-key storage unavailable, continuing with file fallback: {err}"
+            );
+            Ok(key)
+        }
+    }
 }
 
 fn get_or_create_store_key() -> Result<[u8; 32], String> {
-    if let Some(encoded) = load_store_key_file()? {
-        let decoded = URL_SAFE_NO_PAD
-            .decode(encoded)
-            .map_err(|e| format!("invalid stored metadata key file: {e}"))?;
-        return decoded
-            .try_into()
-            .map_err(|_| "invalid stored metadata key file length".to_string());
-    }
-
     #[cfg(target_os = "windows")]
     if let Ok(encoded) = secret_store::load(STORE_KEY_TARGET) {
-        let _ = store_key_file(&encoded);
-        let decoded = URL_SAFE_NO_PAD
-            .decode(encoded)
-            .map_err(|e| format!("invalid legacy stored metadata key: {e}"))?;
-        return decoded
-            .try_into()
-            .map_err(|_| "invalid legacy stored metadata key length".to_string());
+        return decode_store_key(&encoded, "stored metadata key");
     }
 
     #[cfg(not(target_os = "windows"))]
     match secret_store::load_optional(STORE_KEY_TARGET) {
         Ok(Some(encoded)) => {
-            let _ = store_key_file(&encoded);
-            let decoded = URL_SAFE_NO_PAD
-                .decode(encoded)
-                .map_err(|e| format!("invalid legacy stored metadata key: {e}"))?;
-            return decoded
-                .try_into()
-                .map_err(|_| "invalid legacy stored metadata key length".to_string());
+            return decode_store_key(&encoded, "stored metadata key");
         }
         Ok(None) => {}
         Err(_err) => {}
     }
 
+    if let Some(encoded) = load_store_key_file()? {
+        return migrate_file_key_to_secure_store(&encoded);
+    }
+
     #[cfg(all(debug_assertions, not(target_os = "windows")))]
     if let Some(encoded) = load_legacy_dev_fallback_key()? {
-        store_key_file(&encoded)?;
-        let decoded = URL_SAFE_NO_PAD
-            .decode(encoded)
-            .map_err(|e| format!("invalid legacy dev metadata key: {e}"))?;
-        return decoded
-            .try_into()
-            .map_err(|_| "invalid legacy dev metadata key length".to_string());
+        return migrate_file_key_to_secure_store(&encoded);
     }
 
     let mut key = [0u8; 32];
     OsRng.fill_bytes(&mut key);
     let encoded = URL_SAFE_NO_PAD.encode(key);
-    store_key_file(&encoded)?;
+    match secret_store::store(STORE_KEY_TARGET, &encoded) {
+        Ok(()) => {
+            let _ = delete_store_key_file();
+        }
+        Err(err) => {
+            eprintln!(
+                "[sigil] secure metadata-key storage unavailable, using file fallback: {err}"
+            );
+            store_key_file(&encoded)?;
+        }
+    }
     Ok(key)
 }
 
