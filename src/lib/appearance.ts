@@ -33,7 +33,10 @@ export const ACCENT_COLORS: AccentColor[] = [
 
 // ── Color math ────────────────────────────────────────────────────────────
 
+const HEX_COLOR_RE = /^#?(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+
 function hexToRgb(hex: string): [number, number, number] {
+  if (!HEX_COLOR_RE.test(hex)) return [0, 0, 0];
   let h = hex.replace("#", "");
   if (h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
   return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
