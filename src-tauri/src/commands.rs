@@ -31,7 +31,7 @@ fn http_client() -> &'static reqwest::Client {
 }
 use tauri_plugin_clipboard_manager::ClipboardExt;
 
-use crate::auto_lock::AutoLockState;
+use crate::auto_lock::{AutoLockState, MAX_LOCK_TIMEOUT_MINUTES};
 use crate::clipboard::ClipboardState;
 use crate::deep_link::DeepLinkState;
 
@@ -42,7 +42,7 @@ pub fn reset_activity_timer(state: State<'_, AutoLockState>) {
 
 #[tauri::command]
 pub fn set_lock_timeout(minutes: u64, state: State<'_, AutoLockState>) {
-    state.set_timeout(minutes);
+    state.set_timeout(minutes.min(MAX_LOCK_TIMEOUT_MINUTES));
 }
 
 #[tauri::command]

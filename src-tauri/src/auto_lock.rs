@@ -2,6 +2,8 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime};
 use tauri::{AppHandle, Emitter, Manager};
 
+pub const MAX_LOCK_TIMEOUT_MINUTES: u64 = 24 * 60;
+
 pub struct AutoLockState {
     last_activity: Arc<Mutex<Instant>>,
     timeout_minutes: Arc<Mutex<u64>>,
@@ -30,7 +32,7 @@ impl AutoLockState {
     }
 
     pub fn set_timeout(&self, minutes: u64) {
-        *Self::lock_recover(&self.timeout_minutes) = minutes;
+        *Self::lock_recover(&self.timeout_minutes) = minutes.min(MAX_LOCK_TIMEOUT_MINUTES);
     }
 
     pub fn set_lock_on_sleep(&self, enabled: bool) {
@@ -42,7 +44,8 @@ impl AutoLockState {
         if minutes == 0 {
             return None;
         }
-        let timeout = Duration::from_secs(minutes * 60);
+        let timeout_secs = minutes.checked_mul(60)?;
+        let timeout = Duration::from_secs(timeout_secs);
         let elapsed = Self::lock_recover(&self.last_activity).elapsed();
         timeout.checked_sub(elapsed).map(|r| r.as_secs())
     }
@@ -81,7 +84,10 @@ pub fn spawn_lock_watcher(app: AppHandle) {
             continue;
         }
 
-        let timeout = Duration::from_secs(minutes * 60);
+        let Some(timeout_secs) = minutes.checked_mul(60) else {
+            continue;
+        };
+        let timeout = Duration::from_secs(timeout_secs);
         let elapsed = last_activity.lock().unwrap_or_else(|e| e.into_inner()).elapsed();
 
         if elapsed >= timeout {
