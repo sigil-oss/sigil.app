@@ -159,6 +159,22 @@ async fn resolve_public_host(host: String, port: u16) -> Result<(), String> {
 
 const MAX_CALLBACK_BODY: usize = 4 * 1024; // 4 KB
 
+fn sanitize_reqwest_error(error: reqwest::Error) -> String {
+    if let Some(status) = error.status() {
+        return format!("callback server returned HTTP {}", status.as_u16());
+    }
+
+    if error.is_timeout() {
+        return "callback request timed out".into();
+    }
+
+    if error.is_connect() {
+        return "failed to connect to callback server".into();
+    }
+
+    "callback request failed".into()
+}
+
 #[tauri::command]
 pub async fn post_callback(url: String, body: String) -> Result<(), String> {
     if body.len() > MAX_CALLBACK_BODY {
@@ -186,9 +202,9 @@ pub async fn post_callback(url: String, body: String) -> Result<(), String> {
         .body(body)
         .send()
         .await
-        .map_err(|e| e.to_string())?
+        .map_err(sanitize_reqwest_error)?
         .error_for_status()
-        .map_err(|e| e.to_string())?;
+        .map_err(sanitize_reqwest_error)?;
 
     Ok(())
 }
