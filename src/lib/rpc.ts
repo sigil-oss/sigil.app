@@ -11,13 +11,13 @@ export type {
 export const DEFAULT_LIVE_URL = "https://rpc.qubic.org/live/v1";
 export const DEFAULT_ARCHIVE_URL = "https://rpc.qubic.org/query/v1";
 
-function validateRpcUrl(url: string, fallback: string): string {
+export function normalizeRpcUrl(url: string): string | null {
   try {
     const parsed = new URL(url);
-    if (parsed.protocol !== "https:") throw new Error("RPC URL must use HTTPS");
+    if (parsed.protocol !== "https:") return null;
     return parsed.toString().replace(/\/$/, "");
   } catch {
-    return fallback;
+    return null;
   }
 }
 
@@ -41,8 +41,10 @@ export async function getLatestTick(): Promise<number> {
 
 /** Replaces the singleton RPC client with new endpoint URLs — call when the user changes the network in settings. */
 export function configureRpc(liveBaseUrl: string, archiveBaseUrl: string) {
+  const normalizedLive = normalizeRpcUrl(liveBaseUrl) ?? DEFAULT_LIVE_URL;
+  const normalizedArchive = normalizeRpcUrl(archiveBaseUrl) ?? DEFAULT_ARCHIVE_URL;
   _client = createQubicClient({
-    liveBaseUrl: validateRpcUrl(liveBaseUrl, DEFAULT_LIVE_URL),
-    archiveBaseUrl: validateRpcUrl(archiveBaseUrl, DEFAULT_ARCHIVE_URL),
+    liveBaseUrl: normalizedLive,
+    archiveBaseUrl: normalizedArchive,
   });
 }

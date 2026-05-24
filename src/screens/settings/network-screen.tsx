@@ -6,10 +6,10 @@ import { Button } from "@/components/button";
 import { Input } from "@/components/input";
 import { ScreenHeader } from "@/components/screen-header";
 import { usePersistedStore } from "@/store/persisted";
-import { createQubicClient, configureRpc } from "@/lib/rpc";
+import { createQubicClient, configureRpc, normalizeRpcUrl } from "@/lib/rpc";
 
-function isHttpUrl(s: string): boolean {
-  try { return ["http:", "https:"].includes(new URL(s).protocol); } catch { return false; }
+function sanitizeRpcUrl(value: string): string | null {
+  return normalizeRpcUrl(value.trim());
 }
 
 type TestStatus = "idle" | "testing" | "ok" | "error";
@@ -28,16 +28,19 @@ export default function NetworkScreen() {
   const [queryUrl, setQueryUrl] = useState(settings.network.queryApiUrl);
   const [testStatus, setTestStatus] = useState<TestStatus>("idle");
   const [testTick, setTestTick] = useState<number | null>(null);
+  const [testError, setTestError] = useState("");
 
   async function testAndSave() {
-    const live = liveUrl.trim();
-    const archive = queryUrl.trim();
-    if (!isHttpUrl(live) || !isHttpUrl(archive)) {
+    const live = sanitizeRpcUrl(liveUrl);
+    const archive = sanitizeRpcUrl(queryUrl);
+    if (!live || !archive) {
       setTestStatus("error");
+      setTestError("HTTPS RPC URLs are required.");
       return;
     }
     setTestStatus("testing");
     setTestTick(null);
+    setTestError("");
     try {
       const client = createQubicClient({ liveBaseUrl: live, archiveBaseUrl: archive });
       const result = await client.live.getTickInfo();
@@ -45,10 +48,22 @@ export default function NetworkScreen() {
       setTestTick(result.value.tick ?? null);
       setTestStatus("ok");
       configureRpc(live, archive);
-      updateSettings({ network: { ...settings.network, liveApiUrl: live, queryApiUrl: archive } });
+      updateSettings({
+        network: {
+          ...settings.network,
+          liveApiUrl: live,
+          queryApiUrl: archive,
+          name:
+            live === "https://rpc.qubic.org/live/v1" &&
+            archive === "https://rpc.qubic.org/query/v1"
+              ? "mainnet"
+              : "custom",
+        },
+      });
       queryClient.invalidateQueries();
     } catch {
       setTestStatus("error");
+      setTestError("Endpoint check failed.");
     }
   }
 
@@ -81,14 +96,14 @@ export default function NetworkScreen() {
         <Input
           label="Live API"
           value={liveUrl}
-          onChange={(e) => { setLiveUrl(e.target.value); setTestStatus("idle"); }}
+          onChange={(e) => { setLiveUrl(e.target.value); setTestStatus("idle"); setTestError(""); }}
           placeholder="https://rpc.qubic.org/live/v1"
           style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)" }}
         />
         <Input
           label="Archive API"
           value={queryUrl}
-          onChange={(e) => { setQueryUrl(e.target.value); setTestStatus("idle"); }}
+          onChange={(e) => { setQueryUrl(e.target.value); setTestStatus("idle"); setTestError(""); }}
           placeholder="https://rpc.qubic.org/query/v1"
           style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)" }}
         />
@@ -120,6 +135,14 @@ export default function NetworkScreen() {
               [UNREACHABLE]
             </span>
           )}
+        </div>
+        {testError && (
+          <div style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-status-error)", letterSpacing: "0.05em" }}>
+            [{testError.toUpperCase()}]
+          </div>
+        )}
+        <div style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-disabled)", letterSpacing: "0.05em" }}>
+          [CUSTOM RPCS MUST USE HTTPS]
         </div>
       </div>
 
