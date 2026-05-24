@@ -94,6 +94,7 @@ export interface PendingTx {
 }
 
 const MAX_PENDING_TXS = 50;
+const MAX_TX_MEMOS = 500;
 
 const DEFAULT_SETTINGS: AppSettings = {
   autoLockMinutes: 15,
@@ -163,6 +164,12 @@ const tauriStorage: StateStorage = {
     } catch {}
   },
 };
+
+function clampTxMemos(txMemos: Record<string, string>): Record<string, string> {
+  const entries = Object.entries(txMemos);
+  if (entries.length <= MAX_TX_MEMOS) return txMemos;
+  return Object.fromEntries(entries.slice(entries.length - MAX_TX_MEMOS));
+}
 
 interface PersistedState {
   vaults: VaultMeta[];
@@ -292,7 +299,7 @@ export const usePersistedStore = create<PersistedState>()(
         }),
 
       setTxMemo: (hash, memo) =>
-        set((s) => ({ txMemos: { ...s.txMemos, [hash]: memo } })),
+        set((s) => ({ txMemos: clampTxMemos({ ...s.txMemos, [hash]: memo }) })),
 
       deleteTxMemo: (hash) =>
         set((s) => {
@@ -313,7 +320,7 @@ export const usePersistedStore = create<PersistedState>()(
         const pendingTxs = Array.isArray(ps.pendingTxs) ? ps.pendingTxs : currentState.pendingTxs;
         const txMemos =
           ps.txMemos && typeof ps.txMemos === "object" && !Array.isArray(ps.txMemos)
-            ? ps.txMemos
+            ? clampTxMemos(ps.txMemos as Record<string, string>)
             : currentState.txMemos;
         const settingsBase =
           ps.settings && typeof ps.settings === "object" && !Array.isArray(ps.settings)
