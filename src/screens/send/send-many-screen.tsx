@@ -51,6 +51,7 @@ export default function SendManyScreen() {
   const pendingTxs = usePersistedStore((s) => s.pendingTxs);
   const settings = usePersistedStore((s) => s.settings);
   const wallets = useSessionStore((s) => s.wallets);
+  const vault = usePersistedStore((s) => s.vaults.find((v) => v.id === s.settings.activeVaultId));
   const wallet = wallets[settings.activeAccountIndex] ?? null;
   const { data: feeData } = useQuery({
     queryKey: qk.qutilSendManyFee(),
@@ -96,6 +97,14 @@ export default function SendManyScreen() {
 
   // Contact picker state
   const [pickerIndex, setPickerIndex] = useState<number | null>(null);
+  const vaultAccountTargets = (vault?.accounts ?? [])
+    .filter((account) => !account.hidden)
+    .map((account) => ({
+      name: account.name,
+      identity: wallets[account.index]?.identity ?? "",
+    }))
+    .filter((account) => account.identity && account.identity !== (wallet?.identity ?? ""));
+  const canOpenPicker = contacts.length > 0 || vaultAccountTargets.length > 0;
 
   function setField(index: number, field: Partial<Recipient>) {
     setRecipients((prev) => prev.map((r, i) => (i === index ? { ...r, ...field } : r)));
@@ -227,12 +236,12 @@ export default function SendManyScreen() {
                     RECIPIENT {i + 1}
                   </span>
                   <div style={{ display: "flex", gap: "var(--space-2)" }}>
-                    {contacts.length > 0 && (
+                    {canOpenPicker && (
                       <button
                         onClick={() => setPickerIndex(i)}
                         style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-disabled)", letterSpacing: "0.05em", padding: 0 }}
                       >
-                        FROM CONTACTS ↓
+                        PICK DESTINATION ↓
                       </button>
                     )}
                     {recipients.length > 1 && (
@@ -443,6 +452,7 @@ export default function SendManyScreen() {
           setPickerIndex(null);
         }}
         contacts={contacts}
+        accounts={vaultAccountTargets}
       />
 
     </AppShell>

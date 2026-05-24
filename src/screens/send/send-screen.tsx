@@ -67,6 +67,14 @@ export default function SendScreen() {
   const accountName = vault?.accounts[settings.activeAccountIndex]?.name ?? `Account ${settings.activeAccountIndex + 1}`;
   const identity = wallet?.identity ?? "";
   const hasPendingTx = pendingTxs.some((tx) => tx.source === identity);
+  const vaultAccountTargets = (vault?.accounts ?? [])
+    .filter((account) => !account.hidden)
+    .map((account) => ({
+      name: account.name,
+      identity: wallets[account.index]?.identity ?? "",
+    }))
+    .filter((account) => account.identity && account.identity !== identity);
+  const canOpenPicker = contacts.length > 0 || vaultAccountTargets.length > 0;
 
   const { data: recentTxsData } = useTxHistory(identity || null);
   const recentTxs = recentTxsData?.pages[0];
@@ -191,12 +199,12 @@ export default function SendScreen() {
                   {matchedContact.name}
                 </span>
               ) : <span />}
-              {contacts.length > 0 && (
+              {canOpenPicker && (
                 <button
                   onClick={() => setShowPicker(true)}
                   style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-disabled)", letterSpacing: "0.05em", padding: 0 }}
                 >
-                  FROM CONTACTS ↓
+                  PICK DESTINATION ↓
                 </button>
               )}
             </div>
@@ -381,6 +389,7 @@ export default function SendScreen() {
         onClose={() => setShowPicker(false)}
         onSelect={(identity) => { setDestination(identity); setDestError(""); setShowPicker(false); }}
         contacts={contacts}
+        accounts={vaultAccountTargets}
       />
 
     </AppShell>

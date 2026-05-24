@@ -6,6 +6,7 @@ import { ScreenHeader } from "@/components/screen-header";
 import { Button } from "@/components/button";
 import { Input } from "@/components/input";
 import { Modal } from "@/components/modal";
+import { Sheet } from "@/components/sheet";
 import { usePersistedStore, type AccountMeta } from "@/store/persisted";
 import { MAX_VAULT_ACCOUNTS } from "@/hooks/use-vault-balances";
 import { useSessionStore } from "@/store/session";
@@ -51,6 +52,7 @@ export default function VaultDetailScreen() {
 
   const [renamingAccount, setRenamingAccount] = useState<AccountMeta | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  const [selectedAccount, setSelectedAccount] = useState<AccountMeta | null>(null);
 
   const [removingAccount, setRemovingAccount] = useState<AccountMeta | null>(null);
   const [removePassword, setRemovePassword] = useState("");
@@ -97,6 +99,14 @@ export default function VaultDetailScreen() {
   const visible = vault.accounts.filter((a) => !a.hidden).sort((a, b) => a.index - b.index);
   const hidden = vault.accounts.filter((a) => a.hidden).sort((a, b) => a.index - b.index);
   const accentColor = VAULT_COLOR_CSS[vault.color] ?? "var(--color-text-secondary)";
+
+  function openAccountMenu(account: AccountMeta) {
+    setSelectedAccount(account);
+  }
+
+  function closeAccountMenu() {
+    setSelectedAccount(null);
+  }
 
   function openAdd() {
     setAddMode("new");
@@ -263,10 +273,8 @@ export default function VaultDetailScreen() {
           account={account}
           accentColor={accentColor}
           identity={isActive ? (sessionWallets[account.index]?.identity ?? null) : null}
-          onRename={() => { setRenamingAccount(account); setRenameValue(account.name); }}
-          onReveal={() => openReveal(account)}
-          onHide={() => toggleHide(account)}
-          onRemove={() => { setRemovingAccount(account); setRemovePassword(""); setRemoveError(""); }}
+          isCurrent={isActive && settings.activeAccountIndex === account.index}
+          onManage={() => openAccountMenu(account)}
         />
       ))}
 
@@ -297,10 +305,8 @@ export default function VaultDetailScreen() {
           accentColor={accentColor}
           identity={null}
           dimmed
-          onRename={() => { setRenamingAccount(account); setRenameValue(account.name); }}
-          onReveal={() => openReveal(account)}
-          onHide={() => toggleHide(account)}
-          onRemove={() => { setRemovingAccount(account); setRemovePassword(""); setRemoveError(""); }}
+          isCurrent={false}
+          onManage={() => openAccountMenu(account)}
         />
       ))}
 
@@ -458,6 +464,82 @@ export default function VaultDetailScreen() {
           </Button>
         </div>
       </Modal>
+
+      <Sheet
+        open={!!selectedAccount}
+        onClose={closeAccountMenu}
+        title={selectedAccount ? `Manage ${selectedAccount.name}` : "Manage account"}
+        footer={
+          <Button variant="ghost" shape="sharp" size="md" style={{ width: "auto", margin: "0 auto" }} onClick={closeAccountMenu}>
+            Close
+          </Button>
+        }
+      >
+        {selectedAccount && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "var(--space-3)",
+                padding: "var(--space-3)",
+                background: "var(--color-bg-surface)",
+                border: "1px solid var(--color-border-strong)",
+                borderRadius: "var(--radius-sharp)",
+              }}
+            >
+              <Identicon seed={sessionWallets[selectedAccount.index]?.identity ?? selectedAccount.name} size={40} radius={6} style={{ flexShrink: 0 }} />
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-body)", fontWeight: 500, color: "var(--color-text-display)" }}>
+                  {selectedAccount.name}
+                </div>
+                <div style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-disabled)", letterSpacing: "0.05em" }}>
+                  ACCOUNT {selectedAccount.index + 1}
+                  {selectedAccount.hidden ? " · HIDDEN" : ""}
+                  {isActive && settings.activeAccountIndex === selectedAccount.index ? " · ACTIVE" : ""}
+                </div>
+              </div>
+            </div>
+
+            <ActionCard
+              title="Rename"
+              description="Change the label shown in the vault and account switcher."
+              onClick={() => {
+                setRenamingAccount(selectedAccount);
+                setRenameValue(selectedAccount.name);
+                closeAccountMenu();
+              }}
+            />
+            <ActionCard
+              title="Reveal seed"
+              description="Decrypt and display this account seed for a limited time."
+              onClick={() => {
+                openReveal(selectedAccount);
+                closeAccountMenu();
+              }}
+            />
+            <ActionCard
+              title={selectedAccount.hidden ? "Unhide account" : "Hide account"}
+              description={selectedAccount.hidden ? "Show this account in the switcher again." : "Remove this account from the switcher without deleting it."}
+              onClick={() => {
+                toggleHide(selectedAccount);
+                closeAccountMenu();
+              }}
+            />
+            <ActionCard
+              title="Remove account"
+              description="Delete this account from the vault. This cannot be undone."
+              danger
+              onClick={() => {
+                setRemovingAccount(selectedAccount);
+                setRemovePassword("");
+                setRemoveError("");
+                closeAccountMenu();
+              }}
+            />
+          </div>
+        )}
+      </Sheet>
     </AppShell>
   );
 }
@@ -466,14 +548,12 @@ interface AccountRowProps {
   account: AccountMeta;
   accentColor: string;
   identity: string | null;
+  isCurrent: boolean;
   dimmed?: boolean;
-  onRename: () => void;
-  onReveal: () => void;
-  onHide: () => void;
-  onRemove: () => void;
+  onManage: () => void;
 }
 
-function AccountRow({ account, accentColor, identity, dimmed, onRename, onReveal, onHide, onRemove }: AccountRowProps) {
+function AccountRow({ account, accentColor, identity, isCurrent, dimmed, onManage }: AccountRowProps) {
   return (
     <div
       style={{
@@ -499,8 +579,33 @@ function AccountRow({ account, accentColor, identity, dimmed, onRename, onReveal
               ACCOUNT {account.index + 1}
             </div>
           </div>
+          <button
+            type="button"
+            onClick={onManage}
+            style={{
+              background: "none",
+              border: "1px solid var(--color-border-strong)",
+              borderRadius: "var(--radius-sharp)",
+              cursor: "pointer",
+              fontFamily: "var(--font-mono)",
+              fontSize: "var(--text-mono-sm)",
+              color: "var(--color-text-secondary)",
+              letterSpacing: "0.05em",
+              padding: "var(--space-1) var(--space-2)",
+              flexShrink: 0,
+            }}
+          >
+            MANAGE
+          </button>
+        </div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-2)", marginTop: "var(--space-2)" }}>
+          {isCurrent && (
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: accentColor, letterSpacing: "0.05em" }}>
+              [ACTIVE]
+            </span>
+          )}
           {account.hidden && (
-            <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-disabled)", letterSpacing: "0.05em", flexShrink: 0 }}>
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-disabled)", letterSpacing: "0.05em" }}>
               [HIDDEN]
             </span>
           )}
@@ -510,22 +615,51 @@ function AccountRow({ account, accentColor, identity, dimmed, onRename, onReveal
             <IdentityDisplay identity={identity} showIdenticon={false} />
           </div>
         )}
-        <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: "var(--space-2)",
-            marginTop: "var(--space-3)",
-            paddingTop: "var(--space-3)",
-            borderTop: "1px solid var(--color-border-subtle)",
-          }}
-        >
-          <Button variant="ghost" shape="sharp" size="sm" style={{ width: "auto" }} onClick={onRename}>Rename</Button>
-          <Button variant="ghost" shape="sharp" size="sm" style={{ width: "auto" }} onClick={onReveal}>Reveal seed</Button>
-          <Button variant="ghost" shape="sharp" size="sm" style={{ width: "auto" }} onClick={onHide}>{account.hidden ? "Unhide" : "Hide"}</Button>
-          <Button variant="danger" shape="sharp" size="sm" style={{ width: "auto" }} onClick={onRemove}>Remove</Button>
-        </div>
       </div>
     </div>
+  );
+}
+
+function ActionCard({
+  title,
+  description,
+  danger,
+  onClick,
+}: {
+  title: string;
+  description: string;
+  danger?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: "var(--space-4)",
+        width: "100%",
+        textAlign: "left",
+        background: danger ? "color-mix(in srgb, var(--color-status-error) 8%, var(--color-bg-surface))" : "var(--color-bg-surface)",
+        border: `1px solid ${danger ? "color-mix(in srgb, var(--color-status-error) 40%, var(--color-border-strong))" : "var(--color-border-strong)"}`,
+        borderRadius: "var(--radius-sharp)",
+        cursor: "pointer",
+        padding: "var(--space-4)",
+      }}
+    >
+      <div>
+        <div style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-body)", fontWeight: 500, color: danger ? "var(--color-status-error)" : "var(--color-text-display)", marginBottom: "var(--space-1)" }}>
+          {title}
+        </div>
+        <div style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-label)", color: "var(--color-text-secondary)", lineHeight: 1.5 }}>
+          {description}
+        </div>
+      </div>
+      <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: danger ? "var(--color-status-error)" : "var(--color-text-disabled)", letterSpacing: "0.05em", flexShrink: 0 }}>
+        →
+      </span>
+    </button>
   );
 }
