@@ -18,8 +18,6 @@
     "store:allow-load",
     "store:allow-save",
     "store:allow-delete",
-    "store:allow-keys",
-    "store:allow-entries",
     "deep-link:default",
     "clipboard-manager:allow-write-text",
     "notification:default",
