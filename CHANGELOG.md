@@ -1,5 +1,37 @@
 # sigil
 
+## 0.9.0
+
+### Minor Changes
+
+- dfff29d: Add a built-in diagnostics page and exportable debug bundle, while separating diagnostic controls from the lock-on-blur security bypass.
+- 5d3d8bb: Add fiat-at-time transaction history, vault analytics summaries, and richer sponsor transparency details with donation history and attribution preferences.
+- e877995: Add granular notification polling profiles, richer notification center filters, and configurable price and transfer alert rules.
+- 0b08285: Improve deep-link request handling with persistent request history, callback recovery actions, richer contract decoding, and preflight request simulation details.
+- 483a21d: Added signed export format v2 for vault and contact backups, local audit logging for sensitive wallet activity, configurable approval policies for burns, seed reveals, and high-value sends, plus new Trust and Audit Log settings screens.
+- 93db83a: Add shared request schemas and a central transaction domain module.
+
+  This unifies deep-link/request validation, shared request typing, and transaction normalization across history, analytics, search, and background flows. It also includes a polling selector stability fix to prevent a startup render loop.
+
+- 9aa95a7: Complete the trust roadmap with signed deep-link request verification and a local verified dApp issuer registry.
+
+  Signed request envelopes can now be verified against pinned ES256 issuer keys, revoked or mismatched issuers are blocked, and the Trust settings screen manages local issuer entries for request verification.
+
+- c3e7bd1: Added watch-only vaults with per-account notes and tags, plus batch recipient import, inline destination suggestions, and a new global search across accounts, contacts, memos, transactions, and known contracts.
+
+### Patch Changes
+
+- cdc6e05: Aligned request callback parsing with native localhost rules, removed dead boot code, added package check/test entry points, and split vendor bundles to reduce the initial frontend payload.
+- 1a819b3: Tighten notification text sanitization and rewrite random crypto buffer generation to avoid false-positive hard-coded secret alerts in native storage and vault encryption paths.
+- 23edb04: Fixed the highest-priority audit issues around network configuration, local metadata protection, and deep-link request handling.
+
+  - Fixed custom RPC handling so the app consistently supports custom HTTPS endpoints, validates them before saving, and uses the selected network for latest-stats fetches.
+  - Restored OS-protected storage as the primary home for the persisted-store encryption key, with file-based storage kept only as a migration/fallback path when secure storage is unavailable.
+  - Replaced the native single-slot deep-link pending state with a FIFO queue and updated cold-start request draining so bursts of incoming requests are no longer overwritten.
+
+- 6b9e660: Addressed the medium-priority audit findings around dApp approval management, clipboard fallback security, bigint-safe amount display paths, deep-link request validation, pending transaction lifecycle ownership, and splash-screen update blocking.
+- 2a89699: Tighten desktop notification behavior by preventing locked-state OS delivery unless explicitly enabled, removing automatic startup permission prompts, and surfacing actionable Linux/macOS delivery failures in settings and diagnostics.
+
 ## 0.8.5
 
 ### Patch Changes
