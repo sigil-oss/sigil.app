@@ -4,8 +4,13 @@ import {
   sendNotification as tauriSend,
 } from "@tauri-apps/plugin-notification";
 
-function stripNotificationMarkup(value: string): string {
-  return value.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
+export function stripNotificationMarkup(value: string): string {
+  return value
+    .normalize("NFKC")
+    .replace(/[\u0000-\u001F\u007F-\u009F\u202A-\u202E\u2066-\u2069]/g, " ")
+    .replace(/[<>]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 export async function notify(title: string, body: string): Promise<void> {

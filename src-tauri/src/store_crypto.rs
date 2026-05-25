@@ -1,5 +1,5 @@
-use aes_gcm::aead::{Aead, OsRng, rand_core::RngCore};
-use aes_gcm::{Aes256Gcm, KeyInit, Nonce};
+use aes_gcm::aead::{Aead, AeadCore, KeyInit, OsRng};
+use aes_gcm::{Aes256Gcm, Key, Nonce};
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use std::path::PathBuf;
 use tauri::command;
@@ -177,16 +177,21 @@ mod secret_store {
 
 }
 
-fn decode_store_key(encoded: &str, label: &str) -> Result<[u8; 32], String> {
+fn decode_store_key(encoded: &str, label: &str) -> Result<Key<Aes256Gcm>, String> {
     let decoded = URL_SAFE_NO_PAD
         .decode(encoded)
         .map_err(|e| format!("invalid {label}: {e}"))?;
-    decoded
-        .try_into()
-        .map_err(|_| format!("invalid {label} length"))
+    if decoded.len() != 32 {
+        return Err(format!("invalid {label} length"));
+    }
+    Ok(Key::<Aes256Gcm>::clone_from_slice(&decoded))
 }
 
-fn migrate_file_key_to_secure_store(encoded: &str) -> Result<[u8; 32], String> {
+fn generate_store_key() -> Key<Aes256Gcm> {
+    Aes256Gcm::generate_key(&mut OsRng)
+}
+
+fn migrate_file_key_to_secure_store(encoded: &str) -> Result<Key<Aes256Gcm>, String> {
     let key = decode_store_key(encoded, "stored metadata key file")?;
     match secret_store::store(STORE_KEY_TARGET, encoded) {
         Ok(()) => {
@@ -202,7 +207,7 @@ fn migrate_file_key_to_secure_store(encoded: &str) -> Result<[u8; 32], String> {
     }
 }
 
-fn get_or_create_store_key() -> Result<[u8; 32], String> {
+fn get_or_create_store_key() -> Result<Key<Aes256Gcm>, String> {
     #[cfg(target_os = "windows")]
     if let Ok(encoded) = secret_store::load(STORE_KEY_TARGET) {
         return decode_store_key(&encoded, "stored metadata key");
@@ -226,9 +231,8 @@ fn get_or_create_store_key() -> Result<[u8; 32], String> {
         return migrate_file_key_to_secure_store(&encoded);
     }
 
-    let mut key = [0u8; 32];
-    OsRng.fill_bytes(&mut key);
-    let encoded = URL_SAFE_NO_PAD.encode(key);
+    let key = generate_store_key();
+    let encoded = URL_SAFE_NO_PAD.encode(key.as_slice());
     match secret_store::store(STORE_KEY_TARGET, &encoded) {
         Ok(()) => {
             let _ = delete_store_key_file();
@@ -245,17 +249,15 @@ fn get_or_create_store_key() -> Result<[u8; 32], String> {
 
 fn encrypt_value(value: &str) -> Result<String, String> {
     let key = get_or_create_store_key()?;
-    let cipher = Aes256Gcm::new_from_slice(&key).map_err(|e| e.to_string())?;
-
-    let mut nonce_bytes = [0u8; 12];
-    OsRng.fill_bytes(&mut nonce_bytes);
+    let cipher = Aes256Gcm::new(&key);
+    let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
 
     let ciphertext = cipher
-        .encrypt(Nonce::from_slice(&nonce_bytes), value.as_bytes())
+        .encrypt(&nonce, value.as_bytes())
         .map_err(|_| "store encryption failed".to_string())?;
 
-    let mut payload = Vec::with_capacity(nonce_bytes.len() + ciphertext.len());
-    payload.extend_from_slice(&nonce_bytes);
+    let mut payload = Vec::with_capacity(nonce.len() + ciphertext.len());
+    payload.extend_from_slice(nonce.as_slice());
     payload.extend_from_slice(&ciphertext);
 
     Ok(format!("{STORE_VALUE_PREFIX}{}", URL_SAFE_NO_PAD.encode(payload)))
@@ -267,7 +269,7 @@ fn decrypt_value(value: &str) -> Result<String, String> {
     };
 
     let key = get_or_create_store_key()?;
-    let cipher = Aes256Gcm::new_from_slice(&key).map_err(|e| e.to_string())?;
+    let cipher = Aes256Gcm::new(&key);
     let payload = URL_SAFE_NO_PAD
         .decode(encoded)
         .map_err(|e| format!("invalid encrypted metadata payload: {e}"))?;

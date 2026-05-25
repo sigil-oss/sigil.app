@@ -1,6 +1,6 @@
-use aes_gcm::aead::{Aead, OsRng, rand_core::RngCore};
-use aes_gcm::{Aes256Gcm, KeyInit, Nonce};
-use pbkdf2::pbkdf2_hmac;
+use aes_gcm::aead::{Aead, AeadCore, KeyInit, OsRng};
+use aes_gcm::{Aes256Gcm, Key, Nonce};
+use pbkdf2::pbkdf2_hmac_array;
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 use tauri::command;
@@ -25,32 +25,29 @@ struct VaultPayload {
 }
 
 fn derive_key(password: &str, salt: &[u8], iterations: u32) -> [u8; 32] {
-    let mut key = [0u8; 32];
-    pbkdf2_hmac::<Sha256>(password.as_bytes(), salt, iterations, &mut key);
-    key
+    pbkdf2_hmac_array::<Sha256, 32>(password.as_bytes(), salt, iterations)
 }
 
 pub fn encrypt_vault_data(password: &str, seeds: &[String]) -> Result<VaultData, String> {
-    let mut salt = [0u8; SALT_BYTES];
-    let mut iv = [0u8; IV_BYTES];
-    OsRng.fill_bytes(&mut salt);
-    OsRng.fill_bytes(&mut iv);
+    let salt_key = Aes256Gcm::generate_key(&mut OsRng);
+    let salt = &salt_key[..SALT_BYTES];
+    let iv = Aes256Gcm::generate_nonce(&mut OsRng);
 
-    let key = derive_key(password, &salt, PBKDF2_ITERATIONS);
-    let cipher = Aes256Gcm::new_from_slice(&key).map_err(|e| e.to_string())?;
+    let key = derive_key(password, salt, PBKDF2_ITERATIONS);
+    let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&key));
     let plaintext = serde_json::to_vec(&VaultPayload {
         seeds: seeds.to_vec(),
     })
     .map_err(|e| e.to_string())?;
     let ciphertext = cipher
-        .encrypt(Nonce::from_slice(&iv), plaintext.as_ref())
+        .encrypt(&iv, plaintext.as_ref())
         .map_err(|_| "vault encryption failed".to_string())?;
 
     Ok(VaultData {
         version: VAULT_VERSION,
         iterations: PBKDF2_ITERATIONS,
         salt: hex::encode(salt),
-        iv: hex::encode(iv),
+        iv: hex::encode(iv.as_slice()),
         ciphertext: hex::encode(ciphertext),
     })
 }
@@ -64,9 +61,15 @@ pub fn decrypt_vault_data(vault_data: &VaultData, password: &str) -> Result<Vec<
     let iv = hex::decode(&vault_data.iv).map_err(|_| "malformed iv".to_string())?;
     let ciphertext =
         hex::decode(&vault_data.ciphertext).map_err(|_| "malformed ciphertext".to_string())?;
+    if salt.len() != SALT_BYTES {
+        return Err("malformed salt".to_string());
+    }
+    if iv.len() != IV_BYTES {
+        return Err("malformed iv".to_string());
+    }
 
     let key = derive_key(password, &salt, vault_data.iterations);
-    let cipher = Aes256Gcm::new_from_slice(&key).map_err(|e| e.to_string())?;
+    let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&key));
     let plaintext = cipher
         .decrypt(Nonce::from_slice(&iv), ciphertext.as_ref())
         .map_err(|_| "vault decryption failed".to_string())?;
