@@ -11,7 +11,9 @@ import { ScCallPreview, type ScCallRequest } from "@/components/request/sc-call-
 import { SignMessagePreview, type SignMessageApproveResult, type SignMessageRequest } from "@/components/request/sign-message-preview";
 import { ConnectPreview, type ConnectApproveResult, type ConnectRequest } from "@/components/request/connect-preview";
 import { VerifyMessagePreview, type VerifyMessageResult, type VerifyMessageRequest } from "@/components/request/verify-message-preview";
+import { saveFileDialog } from "@/lib/save-file";
 import { useSessionStore } from "@/store/session";
+import { usePersistedStore } from "@/store/persisted";
 import { ScreenHeader } from "@/components/screen-header";
 import { recordAuditEvent } from "@/lib/audit-log";
 
@@ -78,6 +80,20 @@ interface SuccessState {
   hasCallback: boolean;
   callbackStatus: CallbackStatus;
   callbackBody: string;
+  callbackUrl: string | null;
+  requestHistoryId: string | null;
+}
+
+function makeRequestHistoryId() {
+  return `req_${crypto.randomUUID()}`;
+}
+
+function getAccountNameForIdentity(historyVaults: ReturnType<typeof usePersistedStore.getState>["vaults"], identity: string) {
+  for (const vault of historyVaults) {
+    const account = vault.accounts.find((candidate) => candidate.identity === identity);
+    if (account) return account.name;
+  }
+  return undefined;
 }
 
 export default function RequestScreen() {
@@ -86,6 +102,9 @@ export default function RequestScreen() {
   const pendingRequest = useSessionStore((s) => s.pendingRequests[0] ?? null);
   const pendingRequestCount = useSessionStore((s) => s.pendingRequests.length);
   const shiftPendingRequest = useSessionStore((s) => s.shiftPendingRequest);
+  const vaults = usePersistedStore((s) => s.vaults);
+  const addRequestHistoryItem = usePersistedStore((s) => s.addRequestHistoryItem);
+  const updateRequestHistoryItem = usePersistedStore((s) => s.updateRequestHistoryItem);
 
   const parseResult = parseEnvelope(pendingRequest);
   const envelope = parseResult.envelope;
@@ -119,36 +138,80 @@ export default function RequestScreen() {
 
   function reject() {
     if (envelope) {
-      recordAuditEvent({
-        kind: "request_rejected",
-        status: "info",
-        title: "Request rejected",
-        detail: `${envelope.request.type} from ${envelope.request.dapp.origin}`,
-      });
-    }
-    if (envelope?.callback) {
+      const requestHistoryId = makeRequestHistoryId();
       const body = JSON.stringify({
         status: "rejected",
         nonce: envelope.request.nonce,
         type: envelope.request.type,
         reason: "user_rejected",
       });
-      invoke("post_callback", { url: envelope.callback, body }).catch(() => {});
+      addRequestHistoryItem({
+        id: requestHistoryId,
+        createdAt: Date.now(),
+        type: envelope.request.type,
+        dappName: envelope.request.dapp.name || "Unknown dApp",
+        dappOrigin: envelope.request.dapp.origin,
+        action: "rejected",
+        callbackStatus: envelope.callback ? "pending" : "none",
+        callbackUrl: envelope.callback,
+        callbackBody: body,
+        callbackUpdatedAt: envelope.callback ? Date.now() : null,
+      });
+      recordAuditEvent({
+        kind: "request_rejected",
+        status: "info",
+        title: "Request rejected",
+        detail: `${envelope.request.type} from ${envelope.request.dapp.origin}`,
+      });
+      if (envelope.callback) {
+        const callbackUrl = envelope.callback;
+        invoke("post_callback", { url: callbackUrl, body })
+          .then(() => {
+            updateRequestHistoryItem(requestHistoryId, {
+              callbackStatus: "ok",
+              callbackUpdatedAt: Date.now(),
+            });
+          })
+          .catch(() => {
+            updateRequestHistoryItem(requestHistoryId, {
+              callbackStatus: "failed",
+              callbackUpdatedAt: Date.now(),
+            });
+            recordAuditEvent({
+              kind: "request_callback_failed",
+              status: "failure",
+              title: "Callback failed",
+              detail: callbackUrl,
+            });
+          });
+      }
     }
     shiftPendingRequest();
   }
 
-  async function postCallback(callbackBody: string) {
-    if (envelope?.callback) {
+  async function postCallback(callbackBody: string, callbackUrl: string | null, requestHistoryId: string | null) {
+    if (callbackUrl) {
       try {
-        await invoke("post_callback", { url: envelope.callback, body: callbackBody });
+        await invoke("post_callback", { url: callbackUrl, body: callbackBody });
+        if (requestHistoryId) {
+          updateRequestHistoryItem(requestHistoryId, {
+            callbackStatus: "ok",
+            callbackUpdatedAt: Date.now(),
+          });
+        }
         setSuccess((s) => s ? { ...s, callbackStatus: "ok" } : s);
       } catch {
+        if (requestHistoryId) {
+          updateRequestHistoryItem(requestHistoryId, {
+            callbackStatus: "failed",
+            callbackUpdatedAt: Date.now(),
+          });
+        }
         recordAuditEvent({
           kind: "request_callback_failed",
           status: "failure",
           title: "Callback failed",
-          detail: envelope.callback,
+          detail: callbackUrl,
         });
         setSuccess((s) => s ? { ...s, callbackStatus: "failed" } : s);
       }
@@ -159,6 +222,8 @@ export default function RequestScreen() {
 
   async function handleApprove({ txHash, targetTick, identity }: ApproveResult) {
     if (!envelope) return;
+    const requestHistoryId = makeRequestHistoryId();
+    const callbackUrl = envelope.callback;
 
     const callbackBody = JSON.stringify({
       status: "signed",
@@ -176,19 +241,39 @@ export default function RequestScreen() {
       title: "Request approved",
       detail: `${envelope.request.type} from ${envelope.request.dapp.origin}`,
     });
+    addRequestHistoryItem({
+      id: requestHistoryId,
+      createdAt: Date.now(),
+      type: envelope.request.type,
+      dappName: envelope.request.dapp.name || "Unknown dApp",
+      dappOrigin: envelope.request.dapp.origin,
+      action: "approved",
+      accountIdentity: identity,
+      accountName: getAccountNameForIdentity(vaults, identity),
+      resultKind: "tx",
+      resultDetail: txHash,
+      callbackStatus: callbackUrl ? "pending" : "none",
+      callbackUrl,
+      callbackBody,
+      callbackUpdatedAt: callbackUrl ? Date.now() : null,
+    });
     const state: SuccessState = {
       kind: "tx",
       detail: txHash,
-      hasCallback: !!envelope.callback,
+      hasCallback: !!callbackUrl,
       callbackStatus: "pending",
       callbackBody,
+      callbackUrl,
+      requestHistoryId,
     };
     setSuccess(state);
-    await postCallback(callbackBody);
+    await postCallback(callbackBody, callbackUrl, requestHistoryId);
   }
 
   async function handleApproveMessage({ signature, publicKey, identity }: SignMessageApproveResult) {
     if (!envelope) return;
+    const requestHistoryId = makeRequestHistoryId();
+    const callbackUrl = envelope.callback;
 
     const callbackBody = JSON.stringify({
       status: "signed",
@@ -206,19 +291,39 @@ export default function RequestScreen() {
       title: "Message signed",
       detail: envelope.request.dapp.origin,
     });
+    addRequestHistoryItem({
+      id: requestHistoryId,
+      createdAt: Date.now(),
+      type: envelope.request.type,
+      dappName: envelope.request.dapp.name || "Unknown dApp",
+      dappOrigin: envelope.request.dapp.origin,
+      action: "approved",
+      accountIdentity: identity,
+      accountName: getAccountNameForIdentity(vaults, identity),
+      resultKind: "message",
+      resultDetail: signature,
+      callbackStatus: callbackUrl ? "pending" : "none",
+      callbackUrl,
+      callbackBody,
+      callbackUpdatedAt: callbackUrl ? Date.now() : null,
+    });
     const state: SuccessState = {
       kind: "message",
       detail: signature,
-      hasCallback: !!envelope.callback,
+      hasCallback: !!callbackUrl,
       callbackStatus: "pending",
       callbackBody,
+      callbackUrl,
+      requestHistoryId,
     };
     setSuccess(state);
-    await postCallback(callbackBody);
+    await postCallback(callbackBody, callbackUrl, requestHistoryId);
   }
 
   async function handleApproveVerify({ valid, identity }: VerifyMessageResult) {
     if (!envelope) return;
+    const requestHistoryId = makeRequestHistoryId();
+    const callbackUrl = envelope.callback;
 
     const callbackBody = JSON.stringify({
       status: "verified",
@@ -235,19 +340,39 @@ export default function RequestScreen() {
       title: "Signature verified",
       detail: envelope.request.dapp.origin,
     });
+    addRequestHistoryItem({
+      id: requestHistoryId,
+      createdAt: Date.now(),
+      type: envelope.request.type,
+      dappName: envelope.request.dapp.name || "Unknown dApp",
+      dappOrigin: envelope.request.dapp.origin,
+      action: "approved",
+      accountIdentity: identity,
+      accountName: getAccountNameForIdentity(vaults, identity),
+      resultKind: "verify",
+      resultDetail: valid ? "VALID" : "INVALID",
+      callbackStatus: callbackUrl ? "pending" : "none",
+      callbackUrl,
+      callbackBody,
+      callbackUpdatedAt: callbackUrl ? Date.now() : null,
+    });
     const state: SuccessState = {
       kind: "verify",
       detail: valid ? "VALID" : "INVALID",
-      hasCallback: !!envelope.callback,
+      hasCallback: !!callbackUrl,
       callbackStatus: "pending",
       callbackBody,
+      callbackUrl,
+      requestHistoryId,
     };
     setSuccess(state);
-    await postCallback(callbackBody);
+    await postCallback(callbackBody, callbackUrl, requestHistoryId);
   }
 
   async function handleApproveConnect({ identity, permissions }: ConnectApproveResult) {
     if (!envelope) return;
+    const requestHistoryId = makeRequestHistoryId();
+    const callbackUrl = envelope.callback;
 
     const callbackBody = JSON.stringify({
       status: "connected",
@@ -264,15 +389,43 @@ export default function RequestScreen() {
       title: "Connection approved",
       detail: envelope.request.dapp.origin,
     });
+    addRequestHistoryItem({
+      id: requestHistoryId,
+      createdAt: Date.now(),
+      type: envelope.request.type,
+      dappName: envelope.request.dapp.name || "Unknown dApp",
+      dappOrigin: envelope.request.dapp.origin,
+      action: "approved",
+      accountIdentity: identity,
+      accountName: getAccountNameForIdentity(vaults, identity),
+      resultKind: "connect",
+      resultDetail: identity,
+      callbackStatus: callbackUrl ? "pending" : "none",
+      callbackUrl,
+      callbackBody,
+      callbackUpdatedAt: callbackUrl ? Date.now() : null,
+    });
     const state: SuccessState = {
       kind: "connect",
       detail: identity,
-      hasCallback: !!envelope.callback,
+      hasCallback: !!callbackUrl,
       callbackStatus: "pending",
       callbackBody,
+      callbackUrl,
+      requestHistoryId,
     };
     setSuccess(state);
-    await postCallback(callbackBody);
+    await postCallback(callbackBody, callbackUrl, requestHistoryId);
+  }
+
+  async function retryCallbackFromSuccess() {
+    if (!success?.callbackUrl) return;
+    setSuccess((current) => current ? { ...current, callbackStatus: "pending" } : current);
+    await postCallback(success.callbackBody, success.callbackUrl, success.requestHistoryId);
+  }
+
+  async function saveResult(successState: SuccessState) {
+    await saveFileDialog(`sigil-request-result-${Date.now()}.json`, successState.callbackBody);
   }
 
   // ── Success screen ──
@@ -327,15 +480,17 @@ export default function RequestScreen() {
               <div style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-status-error)", letterSpacing: "0.05em" }}>
                 [CALLBACK FAILED]
               </div>
-              <Button
-                variant="secondary"
-                shape="sharp"
-                size="sm"
-                style={{ width: "auto" }}
-                onClick={() => navigator.clipboard.writeText(success.callbackBody).catch(() => {})}
-              >
-                Copy result
-              </Button>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-2)" }}>
+                <Button variant="secondary" shape="sharp" size="sm" style={{ width: "auto" }} onClick={retryCallbackFromSuccess}>
+                  Retry callback
+                </Button>
+                <Button variant="ghost" shape="sharp" size="sm" style={{ width: "auto" }} onClick={() => saveResult(success)}>
+                  Save JSON
+                </Button>
+                <Button variant="ghost" shape="sharp" size="sm" style={{ width: "auto" }} onClick={() => navigator.clipboard.writeText(success.callbackBody).catch(() => {})}>
+                  Copy JSON
+                </Button>
+              </div>
             </div>
           )}
         </div>

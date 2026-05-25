@@ -17,6 +17,7 @@ const ROWS: SettingsRow[] = [
   { label: "Network", description: "RPC endpoints and developer mode", route: "/settings/network", available: true },
   { label: "Appearance", description: "Theme, fonts, accent color, custom scheme", route: "/settings/appearance", available: true },
   { label: "Approved dApps", description: "Review and revoke deep-link permissions", route: "/settings/dapps", available: true },
+  { label: "Request history", description: "Review deep-link approvals, rejections, and callbacks", route: "/settings/request-history", available: true },
   { label: "Contacts", description: "Add, edit, import and export contacts", route: "/settings/contacts", available: true },
   { label: "Notifications", description: "Desktop alerts for received, sent, confirmed", route: "/settings/notifications", available: true },
   { label: "Support", description: "Sponsors, donate QU, GitHub", route: "/settings/support", available: true },

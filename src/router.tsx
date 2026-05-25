@@ -21,6 +21,7 @@ import SearchScreen from "@/screens/search/search-screen";
 import RequestScreen from "@/screens/request/request-screen";
 import SettingsScreen from "@/screens/settings/settings-screen";
 import DappsScreen from "@/screens/settings/dapps-screen";
+import RequestHistoryScreen from "@/screens/settings/request-history-screen";
 import SecurityScreen from "@/screens/settings/security-screen";
 import AuditLogScreen from "@/screens/settings/audit-log-screen";
 import NetworkScreen from "@/screens/settings/network-screen";
@@ -61,6 +62,7 @@ export const router = createHashRouter([
       { path: "/request", element: <Screen component={RequestScreen} /> },
       { path: "/settings", element: <Screen component={SettingsScreen} /> },
       { path: "/settings/dapps", element: <Screen component={DappsScreen} /> },
+      { path: "/settings/request-history", element: <Screen component={RequestHistoryScreen} /> },
       { path: "/settings/security", element: <Screen component={SecurityScreen} /> },
       { path: "/settings/security/audit-log", element: <Screen component={AuditLogScreen} /> },
       { path: "/settings/network", element: <Screen component={NetworkScreen} /> },

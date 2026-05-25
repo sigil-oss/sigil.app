@@ -107,6 +107,7 @@ const MAX_PENDING_TXS = 50;
 const MAX_TX_MEMOS = 500;
 const MAX_NOTIFICATION_EVENTS = 200;
 const MAX_AUDIT_EVENTS = 500;
+const MAX_REQUEST_HISTORY = 200;
 
 export type NotificationEventKind =
   | "received"
@@ -148,6 +149,26 @@ export interface AuditEvent {
   detail: string;
   vaultId?: string;
   accountIndex?: number;
+}
+
+export type RequestHistoryAction = "approved" | "rejected";
+export type RequestHistoryCallbackStatus = "none" | "pending" | "ok" | "failed";
+
+export interface RequestHistoryItem {
+  id: string;
+  createdAt: number;
+  type: "transfer" | "sc_call" | "sign_message" | "verify_message" | "connect";
+  dappName: string;
+  dappOrigin: string;
+  action: RequestHistoryAction;
+  accountIdentity?: string;
+  accountName?: string;
+  resultKind?: "tx" | "message" | "verify" | "connect";
+  resultDetail?: string;
+  callbackStatus: RequestHistoryCallbackStatus;
+  callbackUrl?: string | null;
+  callbackBody?: string;
+  callbackUpdatedAt?: number | null;
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -246,6 +267,14 @@ function clampAuditEvents(events: AuditEvent[]): AuditEvent[] {
     .slice(0, MAX_AUDIT_EVENTS);
 }
 
+function clampRequestHistory(events: RequestHistoryItem[]): RequestHistoryItem[] {
+  if (events.length <= MAX_REQUEST_HISTORY) return events;
+  return events
+    .slice()
+    .sort((a, b) => b.createdAt - a.createdAt)
+    .slice(0, MAX_REQUEST_HISTORY);
+}
+
 interface PersistedState {
   vaults: VaultMeta[];
   settings: AppSettings;
@@ -255,6 +284,7 @@ interface PersistedState {
   txMemos: Record<string, string>;
   notificationEvents: NotificationEvent[];
   auditEvents: AuditEvent[];
+  requestHistory: RequestHistoryItem[];
   lastNotificationScanAt: number;
   addVault: (vault: VaultMeta) => void;
   updateVault: (id: string, updates: Partial<Omit<VaultMeta, "id">>) => void;
@@ -285,6 +315,9 @@ interface PersistedState {
   setLastNotificationScanAt: (timestamp: number) => void;
   addAuditEvent: (event: AuditEvent) => void;
   clearAuditEvents: () => void;
+  addRequestHistoryItem: (event: RequestHistoryItem) => void;
+  updateRequestHistoryItem: (id: string, updates: Partial<Omit<RequestHistoryItem, "id" | "createdAt">>) => void;
+  clearRequestHistory: () => void;
 }
 
 /** Zustand store backed by Tauri LazyStore (`sigil.json` on disk). Survives app restarts. */
@@ -298,6 +331,7 @@ export const usePersistedStore = create<PersistedState>()(
       txMemos: {},
       notificationEvents: [],
       auditEvents: [],
+      requestHistory: [],
       lastNotificationScanAt: 0,
 
       addVault: (vault) =>
@@ -430,6 +464,18 @@ export const usePersistedStore = create<PersistedState>()(
         set((s) => ({ auditEvents: clampAuditEvents([event, ...s.auditEvents]) })),
 
       clearAuditEvents: () => set({ auditEvents: [] }),
+
+      addRequestHistoryItem: (event) =>
+        set((s) => ({ requestHistory: clampRequestHistory([event, ...s.requestHistory]) })),
+
+      updateRequestHistoryItem: (id, updates) =>
+        set((s) => ({
+          requestHistory: clampRequestHistory(
+            s.requestHistory.map((event) => (event.id === id ? { ...event, ...updates } : event)),
+          ),
+        })),
+
+      clearRequestHistory: () => set({ requestHistory: [] }),
     }),
     {
       name: "sigil-persisted",
@@ -491,6 +537,21 @@ export const usePersistedStore = create<PersistedState>()(
               ),
             )
           : currentState.auditEvents;
+        const requestHistory = Array.isArray(ps.requestHistory)
+          ? clampRequestHistory(
+              ps.requestHistory.filter((event): event is RequestHistoryItem =>
+                !!event &&
+                typeof event === "object" &&
+                typeof event.id === "string" &&
+                typeof event.type === "string" &&
+                typeof event.dappName === "string" &&
+                typeof event.dappOrigin === "string" &&
+                typeof event.action === "string" &&
+                typeof event.callbackStatus === "string" &&
+                typeof event.createdAt === "number",
+              ),
+            )
+          : currentState.requestHistory;
         const lastNotificationScanAt =
           typeof ps.lastNotificationScanAt === "number"
             ? ps.lastNotificationScanAt
@@ -524,6 +585,7 @@ export const usePersistedStore = create<PersistedState>()(
           txMemos,
           notificationEvents,
           auditEvents,
+          requestHistory,
           lastNotificationScanAt,
           settings,
         };
