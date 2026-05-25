@@ -1,112 +1,136 @@
 # Sigil Testing Guide
 
-Manual release checklist for Sigil `0.8.x`. This document is meant to be practical: start with a short smoke pass, then run the feature suites that match the release.
+Manual release checklist for the current desktop app.
 
-## Scope
+This guide is designed for practical release validation:
 
-Run this guide before shipping desktop builds for:
+1. run local automated checks
+2. do a short smoke pass on every platform
+3. run the deeper suites that match the changes in the release
+4. verify installed-build behavior for deep links, notifications, and updater
+
+---
+
+## Required Coverage
+
+Every release should get:
+
+- one smoke pass
+- one seeded vault lifecycle pass
+- one watch-only vault pass
+- one deep-link request pass
+- one export / import pass
+- one security / lock pass
+- one installed-build packaging pass
+
+Run on:
+
 - Linux
 - macOS
 - Windows
 
-At minimum, every release should get:
-- the smoke pass
-- one full wallet lifecycle test
-- one deep-link test pass
-- one export/import pass
-- one security/lock pass
+Use disposable seeds and small test funds only.
 
-## Test Environments
+---
 
-Use both when possible:
-- `bun run tauri dev` for rapid iteration
-- installed release bundle for protocol-handler, notification, updater, and packaging checks
+## Local Checks
 
-Important notes:
-- `sigil://` deep links should be validated on an installed build, because OS protocol registration is installer-driven.
-- Linux quick unlock depends on a working secure-storage environment.
-- Deep-link `dapp.origin` must be an `https://` URL.
-- Callback URLs must use `https://`, except `http://localhost` or `http://127.0.0.1` for local development callbacks.
-
-## Preflight
-
-Before starting:
-- confirm the app launches without onboarding regressions
-- confirm the active RPC endpoint is reachable
-- confirm a throwaway vault can be created or imported
-- confirm desktop notifications are allowed on the OS
-
-Recommended local checks before manual testing:
+Run before manual testing:
 
 ```bash
-npm exec tsc -- --noEmit
+bun run lint
+bun run test
+bun run build
 cargo check --manifest-path src-tauri/Cargo.toml
 ```
+
+Use both environments when possible:
+
+- `bun run tauri dev` for rapid iteration
+- installed release bundle for protocol handler, notification, updater, and packaging checks
+
+Important:
+
+- deep links must be validated on an installed build because OS registration is installer-driven
+- Linux notification and updater behavior depends on how the app was installed
+- Linux auto-update is currently AppImage-oriented; `deb` / `rpm` installs should be treated as non-updater installs
+
+---
 
 ## Smoke Pass
 
 Run this first on every platform.
 
-- Launch the app with existing state and verify it opens to lock screen, not onboarding.
-- Unlock with the correct password.
-- Confirm dashboard loads balance, identity, and recent activity without errors.
+- Launch the app with existing state and verify it opens to lock, not onboarding.
+- Unlock the active vault.
+- Confirm dashboard loads balances, activity, and account state without visible errors.
+- Open `History`, `Send`, `Receive`, `Settings`, `Notifications`, `Trust`, and `Diagnostics`.
 - Copy the active identity and verify clipboard copy works.
-- Open `Send`, `Receive`, `History`, `Settings`, and return to dashboard.
-- Lock the app manually from `Settings -> Security`, then unlock again.
-- Export contacts or a vault and verify the native save dialog opens.
-- Quit and relaunch the app. Verify the same vault and settings are still present.
+- Lock the app manually, then unlock again.
+- Export a vault or contacts file and verify the native save dialog opens.
+- Quit and relaunch. Verify the same vault and settings are still present.
+
+Do not continue if any of these fail.
+
+---
 
 ## Test Data
 
-Use disposable test data only.
+Prepare:
 
-- Use a throwaway Qubic seed with small funds.
-- Keep at least two identities available:
-  - one active wallet identity
-  - one recipient identity
-- Keep one exported vault JSON file for import testing.
-- Keep one contacts export JSON file for import testing.
+- one seeded vault with small test funds
+- one second identity for receive / send tests
+- one exported vault file
+- one exported contacts file
+- one watch-only vault or a list of valid identities for creating one
+- one installed build per platform when testing protocol handler, notifications, and updater
 
-## Wallet Lifecycle
+---
 
-### Create vault
+## Vaults And Accounts
 
-- Start from a clean state.
+### Seeded vault creation
+
+- Start from clean state.
 - Create a new vault.
-- Verify seed reveal and spot-check flow work.
+- Verify seed reveal and spot-check flow.
 - Set a password with at least 10 characters.
-- Confirm the app lands on dashboard after creation.
+- Confirm dashboard opens immediately after creation.
 
 Expected:
-- vault metadata persists after restart
-- relaunch goes to lock screen, not onboarding
 
-### Import seed
+- vault persists across restart
+- relaunch goes to lock, not onboarding
 
-- Import a valid seed into a new vault.
-- Verify the seed input is masked.
-- Unlock the imported vault.
-- Confirm the resulting identity matches the expected account.
+### Seed import
 
-### Import vault file
+- Import a valid seed.
+- Verify invalid seed input fails cleanly.
+- Confirm the derived identity matches the expected account.
+- Unlock and confirm dashboard state is correct.
 
-- Import a previously exported vault JSON file.
+### Vault file import
+
+- Import a previously exported vault.
 - Verify wrong password fails cleanly.
-- Verify correct password imports the vault and preserves accounts.
+- Verify correct password restores accounts and metadata.
 
-### Multi-account vault
+### Watch-only vaults
 
-- Add a second account to the active vault.
-- Confirm both accounts appear in the vault view and switcher.
-- Remove a non-primary account if the flow is available.
-- Verify balances and identities switch correctly on dashboard.
+- Create or import a watch-only vault with at least two identities.
+- Confirm the vault opens without requesting a password.
+- Confirm balances, history, search, tags, and notes still work.
+- Verify send and seed-only actions are blocked or hidden as expected.
+- Restart the app and confirm the watch-only vault still opens correctly.
 
-### Seed reveal
+### Multi-account behavior
 
-- Open a vault account detail view.
-- Trigger seed reveal.
-- Verify the reveal is gated and not shown by default.
-- Verify the displayed seed matches the account being inspected.
+- Add at least one extra account to a seeded vault.
+- Hide and unhide a non-primary account if applicable.
+- Rename or retag an account.
+- Switch accounts and confirm dashboard, send, and history update correctly.
+
+---
 
 ## Locking And Session Safety
 
@@ -120,7 +144,7 @@ Expected:
 
 - Set auto-lock to `1 minute`.
 - Leave the app idle until it locks.
-- Unlock and verify normal navigation resumes.
+- Unlock and confirm normal navigation resumes.
 
 ### Lock on sleep
 
@@ -132,131 +156,168 @@ Expected:
 
 - Enable `Lock on window blur`.
 - Switch away from the app.
-- Verify Sigil locks immediately.
-
-Important:
-- if debug mode is enabled, the UI should clearly warn that blur-lock is bypassed
+- Verify Sigil locks immediately unless the explicit blur-lock bypass setting is enabled.
 
 ### Quick unlock / biometric unlock
 
 Run the platform-appropriate path:
+
 - macOS / Windows: biometric unlock
 - Linux: quick unlock via secure storage
 
 Verify:
-- enable flow requires the current vault password
-- lock screen shows the platform-appropriate unlock action after enablement
-- successful quick unlock returns to dashboard
-- disabling the feature removes the shortcut path
+
+- enable flow requires the current password
+- lock screen exposes the correct shortcut
+- success returns to dashboard
+- failure paths are clear
+- disabling the feature removes the shortcut
+
+---
 
 ## Clipboard Safety
 
-- Copy a wallet identity.
-- Paste it once to confirm it copied correctly.
-- Wait for the configured clipboard timeout and confirm the clipboard is cleared.
-- Lock the app and confirm the clipboard is cleared immediately.
-- Repeat once with clipboard timeout set to `Never` and confirm lock still clears it.
+- Copy a wallet identity and confirm it pastes correctly.
+- Wait for the configured timeout and confirm clipboard clears.
+- Lock the app and confirm pending sensitive clipboard content clears immediately.
+- Repeat once with a longer timeout to confirm lock still clears content.
 
-## Send And Receive
+---
+
+## Send, Receive, And History
 
 ### Receive
 
 - Open `Receive`.
 - Verify the active identity is shown and copyable.
-- Verify the QR code renders with sufficient contrast and margin for scanning.
-- Scan it from another device if available.
+- Verify the QR renders clearly.
 
 ### Send QU
 
-- Send a small amount to a valid recipient identity.
-- Verify review details show sender, recipient, and amount.
-- Approve the transaction.
-- Confirm pending transaction appears immediately.
-- Confirm it later settles or fails cleanly.
+- Send a small amount to a valid recipient.
+- Verify review details show sender, recipient, amount, and expected account.
+- Approve and confirm a pending transaction appears.
+- Confirm the transaction later resolves or fails cleanly.
 
 ### Guardrails
 
-Verify all of these:
+Verify:
+
 - invalid identity is rejected
 - non-positive amount is rejected
 - insufficient balance is blocked
-- pending transfer guard prevents conflicting sends when applicable
+- watch-only vaults cannot sign
+- pending transaction cleanup works after confirmation / failure / expiry
 
-### Send many
+### Send to many
 
-- Add multiple recipients.
-- Verify totals update correctly.
-- Verify the flow blocks overdrafts.
+- Add multiple recipients manually.
+- Import recipients from CSV or JSON.
+- Verify totals stay exact and overdrafts are blocked.
 - Approve and confirm the summary reflects recipient count and totals.
 
 ### Burn
 
 - Open the burn flow.
-- Verify the irreversible-action warning is prominent.
+- Verify irreversible-action messaging is prominent.
+- If security policy is enabled, confirm password re-check is enforced.
 - Confirm a small burn can be reviewed and signed.
 
-## Qearn
+### History and analytics
+
+- Open transaction history.
+- Verify recent transfers, burns, and contract activity appear.
+- Add or edit a memo.
+- Verify fiat-at-time values appear when price snapshots exist.
+- Verify analytics render net flow, biggest counterparties, contract usage, and monthly summaries.
+- Confirm monthly summaries are ordered chronologically, newest first.
+
+---
+
+## Qearn And Contract Flows
 
 - Open the Qearn flow.
-- Verify current positions load without layout or query issues.
-- Lock a small amount.
-- If test funds and epoch state allow it, test unlock as well.
-- Confirm the resulting transactions appear in history.
+- Verify positions load without query or layout errors.
+- Lock a small amount if test funds allow.
+- If possible, test unlock as well.
+- Confirm resulting transactions appear in history and analytics.
 
-## Contacts And Exports
+If the release touched contract previews or request simulation:
+
+- verify known contract calls show human-readable labels
+- verify preflight warnings appear for likely failure conditions
+
+---
+
+## Contacts, Search, And Exports
 
 ### Contacts
 
-- Add a new contact manually.
-- Use that contact from the send flow.
-- Export contacts and verify the native save dialog opens.
-- Re-import the exported file and verify entries are preserved.
+- Add a contact manually.
+- Use it from the send flow.
+- Verify address suggestions show contacts and recent recipients.
+- Export contacts and re-import them.
+
+### Search
+
+- Search for:
+  - a contact name
+  - an account identity
+  - a tx hash fragment
+  - a memo
+  - a known contract name
+- Confirm results are relevant and navigable.
 
 ### Vault export
 
 - Export the active vault.
-- Verify the native save dialog opens.
-- Verify the resulting file is created successfully.
-- Re-import the exported vault in a clean state or another vault list.
+- Verify the save dialog opens and the file is written.
+- Re-import the export in a clean state or test profile.
+- Verify version / verification messaging is correct.
 
 ### Error handling
 
-- Cancel the native save dialog and verify the app stays stable.
-- If possible, test a write failure case and verify the error is surfaced cleanly.
+- Cancel the save dialog and confirm the app stays stable.
+- If possible, simulate a write failure and verify the error surfaces cleanly.
 
-## History, Notifications, And Settings
+---
 
-### History
+## Notifications
 
-- Open transaction history.
-- Verify recent transfers, burns, or Qearn actions appear.
-- Verify memo and pending states render without layout issues.
+Test on an installed build when possible.
 
-### Notifications
+### Basic delivery
 
-- Enable notifications.
-- Trigger a transaction confirmation notification if possible.
-- Verify notification text is readable and free of raw markup.
-- On Linux installed builds, verify desktop metadata is correct and notifications are attributed to Sigil.
+- Enable desktop notifications.
+- Send a test notification.
+- Verify the notification is attributed to Sigil and the text is readable.
 
-### Settings
+### Inbox and filters
 
-Verify these screens open and persist changes:
-- Security
-- Contacts
-- Notifications
-- Appearance
-- Network
+- Trigger several event types: received, sent, confirmed, failed/expired, request, price alert if possible.
+- Verify inbox history records them.
+- Verify filtering by type, account, unread state, and tx hash works.
+- Verify mark-all, mark-visible, and mark-type actions work.
 
-On `Network`, verify:
-- RPC endpoint validation rejects malformed values
-- debug mode toggles persist
+### Locked-state behavior
+
+- Disable `Notify when locked`.
+- Lock the app and trigger a deep-link request or other notification-producing event.
+- Confirm the event is recorded in Sigil but does not reach the OS notification surface.
+- Re-enable `Notify when locked` and confirm OS delivery is allowed while locked.
+
+### Linux notes
+
+- On installed Linux builds, confirm desktop metadata is correct.
+- On unpackaged dev builds, confirm you understand notification delivery may be suppressed by the shell.
+
+---
 
 ## Deep-Link Testing
 
-Run these on an installed build.
+Run on an installed build.
 
-### Test page
+### Local launcher
 
 Serve a local test page:
 
@@ -264,7 +325,7 @@ Serve a local test page:
 npx serve . -p 8080
 ```
 
-Use this HTML as a simple launcher:
+Use this HTML:
 
 ```html
 <!DOCTYPE html>
@@ -273,37 +334,42 @@ Use this HTML as a simple launcher:
 <script>
 function toBase64Url(str) {
   return btoa(unescape(encodeURIComponent(str)))
-    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+    .replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }
 
-function request(type, params = {}, callback = 'http://localhost:9999/cb') {
-  const payload = toBase64Url(JSON.stringify({
-    type,
-    nonce: crypto.randomUUID().replace(/-/g, '') + 'ABCD',
-    dapp: {
-      name: 'Sigil Test Page',
-      origin: 'https://example.test'
+function envelope(request, callback = "http://localhost:9999/cb") {
+  return {
+    request: {
+      nonce: crypto.randomUUID().replace(/-/g, "") + "ABCD",
+      exp: Math.floor(Date.now() / 1000) + 300,
+      dapp: {
+        name: "Sigil Test Page",
+        origin: "https://example.test"
+      },
+      ...request
     },
-    exp: Math.floor(Date.now() / 1000) + 300,
-    ...params
-  }));
+    callback
+  };
+}
 
-  const a = document.createElement('a');
-  a.href = `sigil://v1/request?d=${payload}${callback ? `&cb=${encodeURIComponent(callback)}` : ''}`;
+function launch(request, callback) {
+  const payload = toBase64Url(JSON.stringify(envelope(request, callback)));
+  const a = document.createElement("a");
+  a.href = `sigil://v1/request?d=${payload}`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
 }
 
-const RECIPIENT = 'UVYAOYTNYCRBVFBHNFIJUEOUEPEDIDUWWEAXKFSJEBJVASCQEROJOVOEEATL';
+const RECIPIENT = "UVYAOYTNYCRBVFBHNFIJUEOUEPEDIDUWWEAXKFSJEBJVASCQEROJOVOEEATL";
 </script>
 
-<button onclick="request('transfer', { to: RECIPIENT, amount: 1 })">Transfer</button>
-<button onclick="request('connect')">Connect</button>
-<button onclick="request('sign_message', { message: 'Hello Sigil' })">Sign message</button>
-<button onclick="request('verify_message', { message: 'Hello Sigil', signature: 'AAAA', public_key: 'BBBB' })">Verify invalid</button>
-<button onclick="request('sc_call', { contract_index: 9, input_type: 1, amount: 10000000 })">Qearn lock</button>
-<button onclick="request('transfer', { to: RECIPIENT, amount: 1 }, null)">Transfer without callback</button>
+<button onclick="launch({ type: 'transfer', to: RECIPIENT, amount: '1' })">Transfer</button>
+<button onclick="launch({ type: 'connect', permissions: ['transfer', 'sign_message'] })">Connect</button>
+<button onclick="launch({ type: 'sign_message', message: 'Hello Sigil' })">Sign message</button>
+<button onclick="launch({ type: 'verify_message', message: 'Hello Sigil', signature: 'AAAA', public_key: 'BBBB' })">Verify invalid</button>
+<button onclick="launch({ type: 'sc_call', contract_index: 9, input_type: 1, amount: '10000000' })">Qearn lock</button>
+<button onclick="launch({ type: 'transfer', to: RECIPIENT, amount: '1' }, null)">No callback</button>
 </body>
 </html>
 ```
@@ -317,6 +383,7 @@ nc -l 9999
 ### Protocol registration
 
 Verify OS handling:
+
 - macOS: `open "sigil://v1/request?..."`
 - Linux: `xdg-open "sigil://v1/request?..."`
 - Windows: open a `sigil://` URL from the browser or Run dialog
@@ -324,120 +391,138 @@ Verify OS handling:
 ### Request queueing
 
 - Trigger multiple deep links back-to-back.
-- Verify requests are queued instead of one overwriting another.
-- Approve or reject one and confirm the next request appears.
+- Verify requests queue instead of replacing one another.
+- Approve or reject one and confirm the next appears.
 
-### Transfer request
+### Core request types
 
-- Trigger a valid transfer request.
-- Verify the review screen shows the amount and destination.
-- Approve and confirm the callback receives a `signed` result.
-- Reject and confirm the callback receives a `rejected` result.
+For each type, verify review UI, approval, rejection, and callback behavior:
 
-### Connect request
+- `transfer`
+- `connect`
+- `sign_message`
+- `verify_message`
+- `sc_call`
 
-- Trigger `connect` without permissions.
-- Approve and confirm the callback returns identity and an empty permission list.
-- Trigger `connect` with permissions such as `transfer` and `sign_message`.
-- Confirm the result reflects the granted permissions.
+### Trust states
 
-### Sign message
+Verify:
 
-- Trigger a valid `sign_message` request.
-- Approve and confirm the callback contains `signature` and `public_key`.
-- Trigger the same request without a callback and confirm the app shows a copyable result instead.
+- unsigned request shows unverified/self-reported trust state
+- signed request with unknown issuer shows signed-but-untrusted state
+- registry-backed signed request shows verified state
+- revoked issuer, origin mismatch, or invalid signature blocks approval
 
-### Verify message
+### Callback recovery
 
-- Trigger a deliberately invalid `verify_message` request.
-- Confirm the result is shown cleanly as invalid.
-- If you have a real signed sample, verify a valid signature path too.
-
-### Smart contract call
-
-- Trigger a Qearn lock call.
-- Confirm the sheet decodes it as a Qearn action instead of showing only raw fields.
-- Approve and confirm the callback returns a signed transaction result.
+- Trigger a request with a callback that fails.
+- Confirm request history records callback failure.
+- Verify retry, save-as-file, and copy-JSON recovery actions work.
 
 ### Negative cases
 
 Verify each fails safely:
+
 - malformed base64 payload
 - invalid JSON payload
+- invalid envelope shape
 - expired request
 - non-HTTPS `dapp.origin`
-- callback URL outside allowed policy
-- oversized `sign_message`
+- invalid callback URL
 - duplicate nonce replay
 
-### Locked-app behavior
+### Locked and cold-start behavior
 
 - Close the app fully and trigger a deep link.
 - Verify the app opens, requests unlock if needed, and then shows the pending request.
-- Trigger a deep link while the app is already open but locked.
-- Verify the request is still available after unlock.
+- Trigger a deep link while the app is open but locked.
+- Verify the request remains available after unlock.
 
-## Persistence And Restart
+---
 
-- Create or import a vault in `bun run tauri dev`.
-- Quit the app fully.
-- Relaunch with `bun run tauri dev`.
-- Verify the vault still exists and the app goes to lock screen.
+## Updater And Packaging
 
-Repeat once on an installed build:
-- verify persisted state survives restart
-- verify settings survive restart
-- verify pending-safe behavior is intact after relaunch
-
-## Platform-Specific Checks
+Run on installed builds only.
 
 ### Windows
 
-- protocol handler works from browser or Run dialog
-- biometric unlock works if Windows Hello is configured
-- save dialogs and notifications look native
+- Confirm updater check runs without ACL or manifest errors.
+- If an update is available, start install and confirm progress updates.
+- Verify the installer does not surface an interactive setup window during quiet mode.
 
 ### macOS
 
-- protocol handler works with `open`
-- biometric unlock works when Touch ID or supported system auth is available
-- notification permission prompts and delivery behave correctly
+- Confirm updater check runs.
+- If an update is available, verify download/install/relaunch flow.
 
 ### Linux
 
-- protocol handler works with `xdg-open`
-- quick unlock works when secure storage is available
-- installed package registers desktop metadata correctly for notifications
-- `bun run tauri dev` preserves state across restarts
+- AppImage install:
+  - confirm updater check runs
+  - if an update is available, verify download/install flow
+- `deb` / `rpm` install:
+  - confirm the UI and diagnostics report auto-update as unsupported for this install
+  - confirm the app does not pretend update installation is available
+
+### Release artifact sanity
+
+For release candidates, verify:
+
+- protocol handler works from installed build
+- notifications are attributed correctly
+- diagnostics show correct updater platform / package context
+
+---
+
+## Diagnostics, Audit, And Trust Surfaces
+
+- Open `Diagnostics` and verify runtime state renders without errors.
+- Export a debug bundle and confirm the file writes successfully.
+- Confirm updater context, pending request count, and recent runtime issues are present.
+- Open `Trust` and verify trusted issuer registry management works.
+- Open request history and audit log, and verify recent actions are recorded.
+
+---
 
 ## Release Exit Criteria
 
 Do not ship if any of these fail:
+
 - existing users are sent to onboarding unexpectedly
 - unlock fails with the correct password
+- watch-only vaults open in a broken or partially locked state
 - vault export or import is broken
 - clipboard is not cleared on lock
-- deep-link approval screen is bypassed, skipped, or corrupted
+- deep-link approval screen is skipped, corrupted, or bypassed
+- trust-blocked requests can still be approved
 - callback policy accepts an invalid target
-- transactions can be signed with the wrong account or wrong details
+- transaction cleanup leaves stale pending entries
+- updater UI misrepresents platform support
 - app crashes on launch, lock, unlock, export, or deep-link handling
+
+---
 
 ## Minimal Release Checklist
 
 - [ ] App launches with existing state intact
 - [ ] Lock and unlock work
-- [ ] Auto-lock and sleep-lock work
+- [ ] Auto-lock, sleep-lock, and blur-lock work
 - [ ] Clipboard clears on timer and on lock
-- [ ] Receive QR is readable
+- [ ] Seeded vault create / import works
+- [ ] Watch-only vault create / open works
+- [ ] Receive QR and identity copy work
 - [ ] Basic send works
-- [ ] Send-many guardrails work
-- [ ] Qearn flow loads and signs correctly
-- [ ] Contacts export/import works
-- [ ] Vault export/import works
-- [ ] Notifications work
-- [ ] Deep-link transfer approve path works
-- [ ] Deep-link rejection path works
+- [ ] Send-many import and guardrails work
+- [ ] History, memos, fiat values, and analytics render correctly
+- [ ] Contacts and search work
+- [ ] Vault export / import works
+- [ ] Notifications work, including locked-state gating
+- [ ] Deep-link approve path works
+- [ ] Deep-link reject path works
 - [ ] Deep-link no-callback path works
 - [ ] Deep-link queueing works
-- [ ] Restart persistence works in `tauri dev`
-- [ ] Restart persistence works in installed build
+- [ ] Trust validation and blocked-request states work
+- [ ] Request history and callback recovery work
+- [ ] Diagnostics bundle export works
+- [ ] Installed-build updater behavior matches platform/package expectations
+- [ ] Restart persistence works in both `tauri dev` and installed build
