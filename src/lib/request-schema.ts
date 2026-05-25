@@ -4,6 +4,7 @@ import { truncateIdentity } from "@/lib/crypto";
 import { formatQu } from "@/lib/format";
 
 const permissionSchema = z.enum(["transfer", "sc_call", "sign_message"]);
+const jsonWebKeySchema = z.record(z.string(), z.unknown());
 
 const dappMetaSchema = z.object({
   name: z.string().optional().default(""),
@@ -68,6 +69,15 @@ export const sigilRequestSchema = z.discriminatedUnion("type", [
 export const sigilEnvelopeSchema = z.object({
   request: sigilRequestSchema,
   callback: z.union([z.string(), z.null()]).optional().transform((value) => value ?? null),
+  proof: z.object({
+    version: z.literal(1),
+    algorithm: z.literal("ES256"),
+    issuer: z.string().min(1),
+    key_id: z.string().min(1).optional(),
+    payload_hash: z.string().min(16),
+    signature: z.string().min(16),
+    public_jwk: jsonWebKeySchema.optional(),
+  }).optional(),
 }).superRefine((envelope, ctx) => {
   if (!envelope.request.dapp.origin.startsWith("https://")) {
     ctx.addIssue({

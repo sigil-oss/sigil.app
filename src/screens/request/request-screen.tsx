@@ -17,6 +17,7 @@ import { usePersistedStore } from "@/store/persisted";
 import { ScreenHeader } from "@/components/screen-header";
 import { recordAuditEvent } from "@/lib/audit-log";
 import { parseSigilEnvelope, REQUEST_TYPE_LABEL } from "@/lib/request-schema";
+import { evaluateRequestTrust, type RequestTrustInfo } from "@/lib/request-trust";
 
 type CallbackStatus = "pending" | "ok" | "failed";
 
@@ -29,6 +30,17 @@ interface SuccessState {
   callbackUrl: string | null;
   requestHistoryId: string | null;
 }
+
+const DEFAULT_TRUST: RequestTrustInfo = {
+  level: "legacy_unverified",
+  title: "Unverified sender",
+  detail: "The request is unsigned. dApp metadata is self-reported.",
+  issuer: null,
+  keyId: null,
+  verifiedOrigin: null,
+  registryEntry: null,
+  blocking: false,
+};
 
 function makeRequestHistoryId() {
   return `req_${crypto.randomUUID()}`;
@@ -49,6 +61,7 @@ export default function RequestScreen() {
   const pendingRequestCount = useSessionStore((s) => s.pendingRequests.length);
   const shiftPendingRequest = useSessionStore((s) => s.shiftPendingRequest);
   const vaults = usePersistedStore((s) => s.vaults);
+  const trustedDappIssuers = usePersistedStore((s) => s.trustedDappIssuers);
   const addRequestHistoryItem = usePersistedStore((s) => s.addRequestHistoryItem);
   const updateRequestHistoryItem = usePersistedStore((s) => s.updateRequestHistoryItem);
 
@@ -56,10 +69,44 @@ export default function RequestScreen() {
   const envelope = parseResult.envelope;
   const parseError = parseResult.error;
   const [success, setSuccess] = useState<SuccessState | null>(null);
+  const [trustInfo, setTrustInfo] = useState<RequestTrustInfo>(DEFAULT_TRUST);
+  const [trustLoading, setTrustLoading] = useState(false);
+  const [trustError, setTrustError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!pendingRequest && !success) navigate("/dashboard", { replace: true });
   }, [pendingRequest, success, navigate]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!envelope) {
+      setTrustInfo(DEFAULT_TRUST);
+      setTrustError(null);
+      setTrustLoading(false);
+      return;
+    }
+
+    setTrustLoading(true);
+    setTrustError(null);
+    evaluateRequestTrust(envelope, trustedDappIssuers)
+      .then((result) => {
+        if (cancelled) return;
+        setTrustInfo(result);
+        setTrustError(result.blocking ? result.detail : null);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setTrustInfo(DEFAULT_TRUST);
+        setTrustError("Trust verification failed.");
+      })
+      .finally(() => {
+        if (!cancelled) setTrustLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [envelope, trustedDappIssuers]);
 
   // Auto-dismiss when the request's exp timestamp passes so the approval
   // buttons don't remain active after expiry.
@@ -446,13 +493,13 @@ export default function RequestScreen() {
     );
   }
 
-  if (!envelope) {
+  if (!envelope || trustError) {
     return (
       <SheetLayout statusBar={<ScreenHeader title="Request" onBack={() => navigate("/dashboard")} />}>
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
-          <Tag variant="error">INVALID REQUEST</Tag>
+          <Tag variant="error">{trustError ? "BLOCKED REQUEST" : "INVALID REQUEST"}</Tag>
           <div style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-status-error)", letterSpacing: "0.05em" }}>
-            [{parseError}]
+            [{trustError ?? parseError}]
           </div>
           <Button variant="secondary" shape="sharp" onClick={() => { shiftPendingRequest(); navigate("/dashboard"); }}>Back to app</Button>
         </div>
@@ -467,7 +514,13 @@ export default function RequestScreen() {
 
   return (
     <SheetLayout statusBar={statusBar}>
-      <RequestHeader dapp={request.dapp} />
+      {trustLoading ? (
+        <div style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-secondary)", letterSpacing: "0.05em" }}>
+          [VERIFYING REQUEST TRUST...]
+        </div>
+      ) : (
+        <RequestHeader dapp={request.dapp} trust={trustInfo} />
+      )}
       {pendingRequestCount > 1 && (
         <div style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-status-warning)", letterSpacing: "0.05em" }}>
           [{pendingRequestCount - 1} MORE REQUEST{pendingRequestCount > 2 ? "S" : ""} QUEUED]
@@ -475,7 +528,7 @@ export default function RequestScreen() {
       )}
       <Divider />
 
-      {request.type === "transfer" ? (
+      {trustLoading ? null : request.type === "transfer" ? (
         <TransferPreview
           request={request}
           onApprove={handleApprove}

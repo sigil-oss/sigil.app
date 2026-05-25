@@ -104,6 +104,7 @@ struct ParsedRequest {
     request: Value,
     nonce: String,
     callback: Option<String>,
+    proof: Option<Value>,
 }
 
 fn now_secs() -> u64 {
@@ -158,6 +159,13 @@ fn is_valid_qubic_identity(identity: &str) -> bool {
     identity.as_bytes()[56..60] == expected_checksum
 }
 
+fn parse_positive_i64(value: &Value) -> Option<i64> {
+    if let Some(number) = value.as_i64() {
+        return Some(number);
+    }
+    value.as_str()?.parse::<i64>().ok()
+}
+
 fn validate(uri_str: &str) -> Result<ParsedRequest, String> {
     let url = Url::parse(uri_str).map_err(|e| format!("invalid URI: {e}"))?;
 
@@ -194,8 +202,17 @@ fn validate(uri_str: &str) -> Result<ParsedRequest, String> {
     let value: Value =
         serde_json::from_str(&json_str).map_err(|e| format!("JSON parse failed: {e}"))?;
 
+    let (request_value, callback_from_payload, proof) = match value.get("request") {
+        Some(request) if request.is_object() => (
+            request.clone(),
+            value.get("callback").and_then(|callback| callback.as_str()).map(|callback| callback.to_string()),
+            value.get("proof").cloned(),
+        ),
+        _ => (value.clone(), None, None),
+    };
+
     // Required fields
-    let req_type = value["type"].as_str().ok_or("missing 'type' field")?;
+    let req_type = request_value["type"].as_str().ok_or("missing 'type' field")?;
 
     if ![
         "transfer",
@@ -209,7 +226,7 @@ fn validate(uri_str: &str) -> Result<ParsedRequest, String> {
         return Err(format!("unknown request type: {req_type}"));
     }
 
-    let nonce = value["nonce"].as_str().ok_or("missing 'nonce' field")?;
+    let nonce = request_value["nonce"].as_str().ok_or("missing 'nonce' field")?;
     if nonce.len() < 16 || nonce.len() > 128 {
         return Err("nonce must be 16–128 characters".into());
     }
@@ -220,7 +237,7 @@ fn validate(uri_str: &str) -> Result<ParsedRequest, String> {
         return Err("nonce must use a base64url-safe or alphanumeric charset".into());
     }
 
-    let dapp_origin = value["dapp"]["origin"]
+    let dapp_origin = request_value["dapp"]["origin"]
         .as_str()
         .ok_or("missing 'dapp.origin'")?;
     let parsed_origin =
@@ -232,7 +249,7 @@ fn validate(uri_str: &str) -> Result<ParsedRequest, String> {
     // Expiry check: missing exp defaults to 5 minutes from receipt; exp too far in
     // the future is clamped so dApps cannot create permanent requests.
     let now = now_secs();
-    let exp = value["exp"].as_u64().unwrap_or_else(|| now + 300);
+    let exp = request_value["exp"].as_u64().unwrap_or_else(|| now + 300);
     if exp <= now {
         return Err("request has expired".into());
     }
@@ -241,7 +258,15 @@ fn validate(uri_str: &str) -> Result<ParsedRequest, String> {
     }
 
     // Validate callback URL if present
-    if let Some(cb) = &cb_param {
+    let callback = match (callback_from_payload, cb_param) {
+        (Some(from_payload), Some(from_query)) if from_payload != from_query => {
+            return Err("callback URL mismatch between payload and query parameter".into())
+        }
+        (Some(from_payload), _) => Some(from_payload),
+        (None, from_query) => from_query,
+    };
+
+    if let Some(cb) = &callback {
         let cb_url = Url::parse(cb).map_err(|_| "invalid callback URL".to_string())?;
         let host = cb_url.host_str().unwrap_or("");
         // Allow http only to localhost/127.0.0.1; block all other non-HTTPS and all loopback/private addresses.
@@ -257,7 +282,7 @@ fn validate(uri_str: &str) -> Result<ParsedRequest, String> {
     // Type-specific checks
     match req_type {
         "transfer" => {
-            let to = value["to"].as_str().ok_or("transfer: missing 'to'")?;
+            let to = request_value["to"].as_str().ok_or("transfer: missing 'to'")?;
             if !is_valid_qubic_identity(to) {
                 let preview: String = to.chars().take(8).collect();
                 return Err(format!(
@@ -265,21 +290,20 @@ fn validate(uri_str: &str) -> Result<ParsedRequest, String> {
                     preview
                 ));
             }
-            let amount = value["amount"]
-                .as_i64()
+            let amount = parse_positive_i64(&request_value["amount"])
                 .ok_or("transfer: missing 'amount'")?;
             if amount <= 0 {
                 return Err("transfer: 'amount' must be positive".into());
             }
         }
         "sc_call" => {
-            let idx = value["contract_index"]
+            let idx = request_value["contract_index"]
                 .as_i64()
                 .ok_or("sc_call: missing 'contract_index'")?;
             if !(0..=63).contains(&idx) {
                 return Err(format!("sc_call: 'contract_index' out of range: {idx}"));
             }
-            let input_type = value["input_type"]
+            let input_type = request_value["input_type"]
                 .as_i64()
                 .ok_or("sc_call: missing 'input_type'")?;
             if input_type < 0 {
@@ -287,7 +311,7 @@ fn validate(uri_str: &str) -> Result<ParsedRequest, String> {
             }
         }
         "sign_message" => {
-            let msg = value["message"]
+            let msg = request_value["message"]
                 .as_str()
                 .ok_or("sign_message: missing 'message'")?;
             if msg.is_empty() {
@@ -298,16 +322,16 @@ fn validate(uri_str: &str) -> Result<ParsedRequest, String> {
             }
         }
         "verify_message" => {
-            let msg = value["message"]
+            let msg = request_value["message"]
                 .as_str()
                 .ok_or("verify_message: missing 'message'")?;
             if msg.is_empty() {
                 return Err("verify_message: 'message' must not be empty".into());
             }
-            value["signature"]
+            request_value["signature"]
                 .as_str()
                 .ok_or("verify_message: missing 'signature'")?;
-            value["public_key"]
+            request_value["public_key"]
                 .as_str()
                 .ok_or("verify_message: missing 'public_key'")?;
         }
@@ -317,8 +341,9 @@ fn validate(uri_str: &str) -> Result<ParsedRequest, String> {
 
     Ok(ParsedRequest {
         nonce: nonce.to_string(),
-        request: value,
-        callback: cb_param,
+        request: request_value,
+        callback,
+        proof,
     })
 }
 
@@ -339,6 +364,7 @@ pub fn process_url(app: &AppHandle, raw: &str) {
             let envelope = serde_json::json!({
                 "request": parsed.request,
                 "callback": parsed.callback,
+                "proof": parsed.proof,
             });
             let payload = envelope.to_string();
             state.store(payload.clone());
