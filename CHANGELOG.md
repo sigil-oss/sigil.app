@@ -1,5 +1,11 @@
 # sigil
 
+## 0.9.2
+
+### Patch Changes
+
+- c7aba19: Tighten setup and session consistency by aligning vault password guards, resolving splash hydration immediately when available, and making watch-only unlock handling explicit.
+
 ## 0.9.1
 
 ### Patch Changes
