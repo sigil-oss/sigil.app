@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { usePersistedStore } from "@/store/persisted";
 import { useSessionStore } from "@/store/session";
 
@@ -34,12 +35,14 @@ export function usePollingMode(): PollingMode {
 
 export function usePollingIntervalMs(): number {
   const mode = usePollingMode();
-  const settings = usePersistedStore((s) => ({
-    active: s.settings.pollingIntervalActiveMs,
-    background: s.settings.pollingIntervalBackgroundMs,
-    trayHidden: s.settings.pollingIntervalTrayMs,
-    locked: s.settings.pollingIntervalLockedMs,
-  }));
+  const settings = usePersistedStore(
+    useShallow((s) => ({
+      active: s.settings.pollingIntervalActiveMs,
+      background: s.settings.pollingIntervalBackgroundMs,
+      trayHidden: s.settings.pollingIntervalTrayMs,
+      locked: s.settings.pollingIntervalLockedMs,
+    }))
+  );
 
   switch (mode) {
     case "background":
