@@ -1,5 +1,30 @@
 # sigil
 
+## 0.10.0
+
+### Minor Changes
+
+- 17a4bc8: Add dedicated analytics screen accessible from transaction history
+
+  - New `/analytics` route with hero net flow, proportional IN/OUT flow bar,
+    monthly breakdown bars, top counterparties, and contract usage sections
+  - Compact QU number formatting via `Intl.NumberFormat` compact notation
+  - History screen gains a chart icon button navigating to analytics
+
+- 17a4bc8: Apply Nothing design system to core UI components
+
+  - Button: Space Mono font, uppercase + letter-spacing, consistent 13px/11px sizing
+  - Input: label font → Space Mono with 0.08em tracking
+  - Dashboard balance: hero number uses Doto display font
+  - Remove toast and skeleton components (anti-patterns per Nothing design)
+
+### Patch Changes
+
+- 17a4bc8: Replace vaults header text buttons with icon buttons
+
+  Import, watch-only, and new vault actions now use `FolderOpen`, `Eye`,
+  and `Plus` icons instead of text labels for a cleaner header.
+
 ## 0.9.2
 
 ### Patch Changes
