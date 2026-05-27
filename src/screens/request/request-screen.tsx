@@ -16,7 +16,7 @@ import { useSessionStore } from "@/store/session";
 import { usePersistedStore } from "@/store/persisted";
 import { ScreenHeader } from "@/components/screen-header";
 import { recordAuditEvent } from "@/lib/audit-log";
-import { parseSigilEnvelope, REQUEST_TYPE_LABEL } from "@/lib/request-schema";
+import { parseSigilEnvelope, REQUEST_TYPE_LABEL, type SigilCallbackResponse } from "@/lib/request-schema";
 import { evaluateRequestTrust, type RequestTrustInfo } from "@/lib/request-trust";
 
 type CallbackStatus = "pending" | "ok" | "failed";
@@ -132,12 +132,13 @@ export default function RequestScreen() {
   function reject() {
     if (envelope) {
       const requestHistoryId = makeRequestHistoryId();
-      const body = JSON.stringify({
+      const response: SigilCallbackResponse = {
         status: "rejected",
         nonce: envelope.request.nonce,
         type: envelope.request.type,
         reason: "user_rejected",
-      });
+      };
+      const body = JSON.stringify(response);
       addRequestHistoryItem({
         id: requestHistoryId,
         createdAt: Date.now(),
@@ -218,14 +219,15 @@ export default function RequestScreen() {
     const requestHistoryId = makeRequestHistoryId();
     const callbackUrl = envelope.callback;
 
-    const callbackBody = JSON.stringify({
+    const response: SigilCallbackResponse = {
       status: "signed",
+      type: envelope.request.type as "transfer" | "sc_call",
       nonce: envelope.request.nonce,
-      type: envelope.request.type,
       identity,
       tx_hash: txHash,
       target_tick: targetTick,
-    });
+    };
+    const callbackBody = JSON.stringify(response);
 
     shiftPendingRequest();
     recordAuditEvent({
@@ -268,14 +270,15 @@ export default function RequestScreen() {
     const requestHistoryId = makeRequestHistoryId();
     const callbackUrl = envelope.callback;
 
-    const callbackBody = JSON.stringify({
+    const response: SigilCallbackResponse = {
       status: "signed",
+      type: "sign_message",
       nonce: envelope.request.nonce,
-      type: envelope.request.type,
       identity,
       signature,
       public_key: publicKey,
-    });
+    };
+    const callbackBody = JSON.stringify(response);
 
     shiftPendingRequest();
     recordAuditEvent({
@@ -318,13 +321,14 @@ export default function RequestScreen() {
     const requestHistoryId = makeRequestHistoryId();
     const callbackUrl = envelope.callback;
 
-    const callbackBody = JSON.stringify({
+    const response: SigilCallbackResponse = {
       status: "verified",
+      type: "verify_message",
       nonce: envelope.request.nonce,
-      type: envelope.request.type,
       valid,
       identity,
-    });
+    };
+    const callbackBody = JSON.stringify(response);
 
     shiftPendingRequest();
     recordAuditEvent({
@@ -367,13 +371,14 @@ export default function RequestScreen() {
     const requestHistoryId = makeRequestHistoryId();
     const callbackUrl = envelope.callback;
 
-    const callbackBody = JSON.stringify({
+    const response: SigilCallbackResponse = {
       status: "connected",
+      type: "connect",
       nonce: envelope.request.nonce,
-      type: envelope.request.type,
       identity,
       permissions,
-    });
+    };
+    const callbackBody = JSON.stringify(response);
 
     shiftPendingRequest();
     recordAuditEvent({

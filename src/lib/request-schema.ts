@@ -104,6 +104,56 @@ export const sigilEnvelopeSchema = z.object({
   }
 });
 
+// ── Callback response types ────────────────────────────────────────────────────
+
+export interface SigilSignedTransferCallback {
+  status: "signed";
+  type: "transfer" | "sc_call";
+  nonce: string;
+  identity: string;
+  tx_hash: string;
+  target_tick: number;
+}
+
+export interface SigilSignedMessageCallback {
+  status: "signed";
+  type: "sign_message";
+  nonce: string;
+  identity: string;
+  signature: string;
+  public_key: string;
+}
+
+export interface SigilConnectedCallback {
+  status: "connected";
+  type: "connect";
+  nonce: string;
+  identity: string;
+  permissions: SigilPermission[];
+}
+
+export interface SigilVerifiedCallback {
+  status: "verified";
+  type: "verify_message";
+  nonce: string;
+  valid: boolean;
+  identity: string;
+}
+
+export interface SigilRejectedCallback {
+  status: "rejected";
+  type: SigilRequest["type"];
+  nonce: string;
+  reason: "user_rejected";
+}
+
+export type SigilCallbackResponse =
+  | SigilSignedTransferCallback
+  | SigilSignedMessageCallback
+  | SigilConnectedCallback
+  | SigilVerifiedCallback
+  | SigilRejectedCallback;
+
 export type DappMeta = z.infer<typeof dappMetaSchema>;
 export type TransferRequest = z.infer<typeof transferRequestSchema>;
 export type ScCallRequest = z.infer<typeof scCallRequestSchema>;

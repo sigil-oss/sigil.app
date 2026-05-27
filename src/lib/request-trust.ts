@@ -212,6 +212,18 @@ export async function evaluateRequestTrust(
   };
 }
 
+export async function verifyEnvelopeSignature(
+  envelope: SigilEnvelope,
+  options?: { publicJwk?: JsonWebKey },
+): Promise<boolean> {
+  const proof = envelope.proof;
+  if (!proof) return false;
+  const jwk = options?.publicJwk ?? (proof.public_jwk as JsonWebKey | undefined);
+  if (!jwk) throw new Error("No public key available: provide publicJwk or include it in the proof");
+  const payload = serializeSignedRequestPayload(envelope);
+  return verifyEs256Signature(jwk, payload, proof.signature);
+}
+
 export function serializeSignedRequestPayload(envelope: Pick<SigilEnvelope, "request" | "callback">): string {
   return canonicalize({
     request: envelope.request,
