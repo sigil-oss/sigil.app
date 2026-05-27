@@ -9,7 +9,7 @@ use tauri::{AppHandle, Emitter, State};
 pub struct HideToTrayState(pub AtomicBool);
 
 #[derive(Serialize)]
-#[serde(rename_all = "snake_case")]
+#[serde(rename_all = "camelCase")]
 pub struct UpdaterContext {
     platform: &'static str,
     package_kind: &'static str,

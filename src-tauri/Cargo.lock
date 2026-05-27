@@ -3885,7 +3885,7 @@ checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
 
 [[package]]
 name = "sigil-wallet"
-version = "0.8.1"
+version = "0.10.0"
 dependencies = [
  "aes-gcm",
  "base64 0.22.1",
@@ -3910,6 +3910,7 @@ dependencies = [
  "tauri-plugin-single-instance",
  "tauri-plugin-store",
  "tauri-plugin-updater",
+ "tiny-keccak",
  "tokio",
  "url",
  "windows 0.58.0",
