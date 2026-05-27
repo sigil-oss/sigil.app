@@ -49,7 +49,7 @@ export const useSessionStore = create<SessionState>()((set) => ({
 
   lock: () => {
     clearSecureSession();
-    set({ unlockedVaultId: null, wallets: [], isLocked: true, pendingRequests: [] });
+    set({ unlockedVaultId: null, wallets: [], isLocked: true });
   },
 
   enqueuePendingRequest: (raw) =>

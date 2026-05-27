@@ -77,7 +77,7 @@ export const sigilEnvelopeSchema = z.object({
     payload_hash: z.string().min(16),
     signature: z.string().min(16),
     public_jwk: jsonWebKeySchema.optional(),
-  }).optional(),
+  }).nullish(),
 }).superRefine((envelope, ctx) => {
   if (!envelope.request.dapp.origin.startsWith("https://")) {
     ctx.addIssue({
