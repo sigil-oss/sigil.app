@@ -144,8 +144,13 @@ jobs:
 
       - name: Patch AppImage for rolling-release distros
         run: |
-          wget -q -O appimagetool.AppImage \
-            "https://github.com/probonopd/go-appimage/releases/download/continuous/appimagetool-x86_64.AppImage"
+          # go-appimage uses versioned filenames (e.g. appimagetool-940-x86_64.AppImage);
+          # use gh to resolve the current name and rename for a stable local reference.
+          gh release download continuous \
+            --repo probonopd/go-appimage \
+            --pattern "appimagetool-*-x86_64.AppImage" \
+            --dir .
+          mv appimagetool-*-x86_64.AppImage appimagetool.AppImage
           chmod +x appimagetool.AppImage
 
           APPIMAGE=$(find src-tauri/target/release/bundle/appimage -name "*.AppImage" ! -name "*.sig" | head -1)
@@ -179,6 +184,7 @@ jobs:
             --password "$TAURI_SIGNING_PRIVATE_KEY_PASSWORD" \
             "$APPIMAGE"
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
