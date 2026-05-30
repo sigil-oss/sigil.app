@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, useRef, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { invoke } from "@tauri-apps/api/core";
 import { Button } from "@/components/button";
@@ -57,6 +57,8 @@ export default function RequestScreen() {
   const envelope = parseResult.envelope;
   const parseError = parseResult.error;
   const [success, setSuccess] = useState<SuccessState | null>(null);
+  const [expirySecsLeft, setExpirySecsLeft] = useState<number | null>(null);
+  const expiryIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (!pendingRequest && !success) navigate("/dashboard", { replace: true });
@@ -64,18 +66,27 @@ export default function RequestScreen() {
 
 
   // Auto-dismiss when the request's exp timestamp passes so the approval
-  // buttons don't remain active after expiry.
+  // buttons don't remain active after expiry. Also drives a visible countdown.
   useEffect(() => {
-    if (!envelope?.request.exp || success) return;
+    if (!envelope?.request.exp || success) {
+      setExpirySecsLeft(null);
+      return;
+    }
     const msUntilExp = envelope.request.exp * 1000 - Date.now();
     if (msUntilExp <= 0) {
       shiftPendingRequest();
       return;
     }
-    const t = setTimeout(() => {
-      shiftPendingRequest();
-    }, msUntilExp);
-    return () => clearTimeout(t);
+    setExpirySecsLeft(Math.ceil(msUntilExp / 1000));
+    const t = setTimeout(() => { shiftPendingRequest(); }, msUntilExp);
+    expiryIntervalRef.current = setInterval(() => {
+      const remaining = Math.ceil((envelope.request.exp! * 1000 - Date.now()) / 1000);
+      setExpirySecsLeft(Math.max(0, remaining));
+    }, 1000);
+    return () => {
+      clearTimeout(t);
+      if (expiryIntervalRef.current) clearInterval(expiryIntervalRef.current);
+    };
   }, [envelope?.request.exp, success, shiftPendingRequest]);
 
   // Dismiss without notifying the dApp — used by the BACK button so navigating
@@ -493,7 +504,7 @@ export default function RequestScreen() {
   const statusBar = <ScreenHeader title={typeLabel} onBack={dismiss} backAriaLabel="Close without rejecting" />;
 
   return (
-    <SheetLayout statusBar={statusBar}>
+    <SheetLayout statusBar={statusBar} expirySecsLeft={expirySecsLeft}>
       <RequestHeader dapp={request.dapp} />
       {pendingRequestCount > 1 && (
         <div style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-status-warning)", letterSpacing: "0.05em" }}>
@@ -537,7 +548,7 @@ export default function RequestScreen() {
   );
 }
 
-function SheetLayout({ statusBar, children }: { statusBar: ReactNode; children: ReactNode }) {
+function SheetLayout({ statusBar, children, expirySecsLeft }: { statusBar: ReactNode; children: ReactNode; expirySecsLeft?: number | null }) {
   const countdown = useLockCountdown();
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
@@ -591,6 +602,26 @@ function SheetLayout({ statusBar, children }: { statusBar: ReactNode; children: 
           >
             <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-status-warning)", letterSpacing: "0.05em" }}>
               [LOCKING IN {countdown}s]
+            </span>
+          </div>
+        )}
+
+        {/* Request expiry countdown */}
+        {expirySecsLeft !== null && expirySecsLeft !== undefined && (
+          <div
+            aria-live="polite"
+            style={{
+              flexShrink: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "var(--space-1) var(--space-4)",
+              background: "var(--color-bg-elevated)",
+              borderBottom: "1px solid var(--color-border-subtle)",
+            }}
+          >
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: expirySecsLeft <= 10 ? "var(--color-status-error)" : "var(--color-text-disabled)", letterSpacing: "0.05em" }}>
+              [REQUEST EXPIRES IN {expirySecsLeft}s]
             </span>
           </div>
         )}
