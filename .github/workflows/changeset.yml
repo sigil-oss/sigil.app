@@ -182,7 +182,11 @@ jobs:
           rm -f squashfs-root/usr/lib/libatk-1.0.so*
           rm -f squashfs-root/usr/lib/libharfbuzz.so*
 
-          APPDIR="$APPTOOL_APPDIR" ARCH=x86_64 "$APPTOOL_APPRUN" squashfs-root "$APPIMAGE"
+          # go-appimage requires exactly one arg (AppDir); output filename is auto-generated
+          # in CWD as {Name}-{version}-x86_64.AppImage
+          APPDIR="$APPTOOL_APPDIR" ARCH=x86_64 "$APPTOOL_APPRUN" squashfs-root
+          PATCHED=$(find . -maxdepth 1 -name "*-x86_64.AppImage" -newer go-appimagetool.AppImage | head -1)
+          mv "$PATCHED" "$APPIMAGE"
 
           # Resign — patching changes the checksum so the original .sig is invalid
           bun tauri signer sign \
