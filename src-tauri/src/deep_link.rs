@@ -104,6 +104,7 @@ struct ParsedRequest {
     request: Value,
     nonce: String,
     callback: Option<String>,
+    redirect_uri: Option<String>,
     proof: Option<Value>,
 }
 
@@ -202,13 +203,14 @@ fn validate(uri_str: &str) -> Result<ParsedRequest, String> {
     let value: Value =
         serde_json::from_str(&json_str).map_err(|e| format!("JSON parse failed: {e}"))?;
 
-    let (request_value, callback_from_payload, proof) = match value.get("request") {
+    let (request_value, callback_from_payload, redirect_uri_from_payload, proof) = match value.get("request") {
         Some(request) if request.is_object() => (
             request.clone(),
-            value.get("callback").and_then(|callback| callback.as_str()).map(|callback| callback.to_string()),
+            value.get("callback").and_then(|v| v.as_str()).map(|s| s.to_string()),
+            value.get("redirect_uri").and_then(|v| v.as_str()).map(|s| s.to_string()),
             value.get("proof").cloned(),
         ),
-        _ => (value.clone(), None, None),
+        _ => (value.clone(), None, None, None),
     };
 
     // Required fields
@@ -266,17 +268,26 @@ fn validate(uri_str: &str) -> Result<ParsedRequest, String> {
         (None, from_query) => from_query,
     };
 
-    if let Some(cb) = &callback {
-        let cb_url = Url::parse(cb).map_err(|_| "invalid callback URL".to_string())?;
-        let host = cb_url.host_str().unwrap_or("");
-        // Allow http only to localhost/127.0.0.1; block all other non-HTTPS and all loopback/private addresses.
+    fn validate_delivery_url(url_str: &str, field: &str) -> Result<(), String> {
+        let url = Url::parse(url_str).map_err(|_| format!("invalid {field} URL"))?;
+        let host = url.host_str().unwrap_or("");
         let is_local = matches!(host, "localhost" | "127.0.0.1");
-        if cb_url.scheme() != "https" && !(cb_url.scheme() == "http" && is_local) {
-            return Err("callback URL must use HTTPS (or http://localhost / http://127.0.0.1 for local dev)".into());
+        if url.scheme() != "https" && !(url.scheme() == "http" && is_local) {
+            return Err(format!("{field} must use HTTPS (or http://localhost / http://127.0.0.1 for local dev)"));
         }
         if !is_local && crate::commands::is_private_host(host) {
-            return Err("callback URL must not target a private or loopback address".into());
+            return Err(format!("{field} must not target a private or loopback address"));
         }
+        Ok(())
+    }
+
+    if let Some(cb) = &callback {
+        validate_delivery_url(cb, "callback URL")?;
+    }
+
+    let redirect_uri = redirect_uri_from_payload;
+    if let Some(ru) = &redirect_uri {
+        validate_delivery_url(ru, "redirect_uri")?;
     }
 
     // Type-specific checks
@@ -343,6 +354,7 @@ fn validate(uri_str: &str) -> Result<ParsedRequest, String> {
         nonce: nonce.to_string(),
         request: request_value,
         callback,
+        redirect_uri,
         proof,
     })
 }
@@ -364,6 +376,7 @@ pub fn process_url(app: &AppHandle, raw: &str) {
             let envelope = serde_json::json!({
                 "request": parsed.request,
                 "callback": parsed.callback,
+                "redirect_uri": parsed.redirect_uri,
                 "proof": parsed.proof,
             });
             let payload = envelope.to_string();
