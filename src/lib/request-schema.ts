@@ -70,15 +70,6 @@ export const sigilEnvelopeSchema = z.object({
   request: sigilRequestSchema,
   callback: z.union([z.string(), z.null()]).optional().transform((value) => value ?? null),
   redirect_uri: z.union([z.string(), z.null()]).optional().transform((value) => value ?? null),
-  proof: z.object({
-    version: z.literal(1),
-    algorithm: z.literal("ES256"),
-    issuer: z.string().min(1),
-    key_id: z.string().min(1).optional(),
-    payload_hash: z.string().min(16),
-    signature: z.string().min(16),
-    public_jwk: jsonWebKeySchema.optional(),
-  }).nullish(),
 }).superRefine((envelope, ctx) => {
   if (!envelope.request.dapp.origin.startsWith("https://")) {
     ctx.addIssue({
@@ -97,11 +88,7 @@ export const sigilEnvelopeSchema = z.object({
   }
 
   if (envelope.redirect_uri && !isAllowedCallbackUrl(envelope.redirect_uri)) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "redirect_uri must use HTTPS or localhost HTTP",
-      path: ["redirect_uri"],
-    });
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "redirect_uri must use HTTPS or localhost HTTP", path: ["redirect_uri"] });
   }
 
   if (envelope.request.exp && Date.now() / 1000 > envelope.request.exp) {
