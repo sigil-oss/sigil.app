@@ -156,8 +156,8 @@ jobs:
           # Extract the go-appimage tool to get the static Go binary directly,
           # bypassing the AppImage runtime that drops args when APPIMAGE_EXTRACT_AND_RUN=1.
           ./go-appimagetool.AppImage --appimage-extract
-          APPTOOL=$(find squashfs-root -name "appimagetool" -type f | head -1)
           mv squashfs-root go-appimagetool-extracted
+          APPTOOL=$(find go-appimagetool-extracted -name "appimagetool" -type f | head -1)
 
           APPIMAGE=$(find src-tauri/target/release/bundle/appimage -name "*.AppImage" ! -name "*.sig" | head -1)
 
