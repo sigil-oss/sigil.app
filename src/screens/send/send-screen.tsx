@@ -255,7 +255,7 @@ export default function SendScreen() {
             price={stats?.price}
           />
 
-          <BalanceBar balance={balance} amountStr={amountStr} />
+          <BalanceBar balance={balance} amountStr={amountStr} onMax={balance !== null ? () => { setAmountStr(balance.toString()); setAmountError(""); } : undefined} />
 
           {watchOnly && (
             <div style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-status-warning)", letterSpacing: "0.05em", lineHeight: 1.6 }}>
@@ -697,7 +697,7 @@ const PRICE_APPLY_BTN: React.CSSProperties = {
   padding: "var(--space-2) var(--space-4)",
 };
 
-function BalanceBar({ balance, amountStr }: { balance: bigint | null; amountStr: string }) {
+function BalanceBar({ balance, amountStr, onMax }: { balance: bigint | null; amountStr: string; onMax?: () => void }) {
   if (balance === null) return null;
   const n = amountStr.trim();
   const entered = n ? BigInt(n) : 0n;
@@ -708,9 +708,20 @@ function BalanceBar({ balance, amountStr }: { balance: bigint | null; amountStr:
       <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-disabled)", letterSpacing: "0.05em" }}>
         AVAILABLE
       </span>
-      <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", letterSpacing: "0.05em", color: over ? "var(--color-status-error)" : "var(--color-text-secondary)" }}>
-        {formatQu(remaining)} QU
-      </span>
+      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+        {onMax && (
+          <button
+            type="button"
+            onClick={onMax}
+            style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-disabled)", letterSpacing: "0.05em", padding: 0, textDecoration: "underline" }}
+          >
+            MAX
+          </button>
+        )}
+        <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", letterSpacing: "0.05em", color: over ? "var(--color-status-error)" : "var(--color-text-secondary)" }}>
+          {formatQu(remaining)} QU
+        </span>
+      </div>
     </div>
   );
 }
