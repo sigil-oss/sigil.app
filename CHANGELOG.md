@@ -1,5 +1,21 @@
 # sigil
 
+## 0.11.3
+
+### Patch Changes
+
+- 88ea1e9: Add a MAX button to the send screen balance bar that fills the amount field with the full available balance.
+- 88ea1e9: Add an actionable hint ("SEND OR RECEIVE QU TO GET STARTED") below the empty transactions state on the dashboard.
+- 096a68a: Preserve transaction history filters when switching accounts instead of resetting to defaults.
+- 88ea1e9: Rate-limit password unlock attempts (5 attempts then 30s cooldown) and show a clear message when biometric is locked out instead of silently hiding the button.
+- 257dd7d: Add a tooltip title to the network health dot, and add a color legend to the network overlay modal so the green/yellow/red states are explained without guessing.
+- 257dd7d: QR code card now uses a white background so the QR blends seamlessly in all themes instead of showing a mismatch between the card and QR margins.
+- 88ea1e9: Change QR reveal hint from "HOVER TO REVEAL" to "TAP OR HOVER TO REVEAL" for touch users. Add a live expiry countdown to the request approval screen that turns red in the final 10 seconds.
+- 88ea1e9: Show a live countdown timer during seed reveal instead of the static "60 SECONDS" label.
+- 257dd7d: Show a validation error when entering an invalid or zero price override in send-many instead of silently ignoring it. Reduce infinite scroll trigger margin in history from 200px to 100px to avoid over-eager page fetching.
+- 096a68a: Settings rows now show current values at a glance (auto-lock duration, theme, contact count, notification state, approved dApp count) instead of static descriptions.
+- 096a68a: Show an error modal when importing a malformed vault file instead of silently ignoring it. When the active vault is deleted, automatically activate the next vault and navigate to the lock screen. Show last-used time on contact cards and sort contacts by recent use.
+
 ## 0.11.2
 
 ### Patch Changes
