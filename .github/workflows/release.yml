@@ -45,7 +45,8 @@ jobs:
             libglib2.0-dev \
             libdbus-1-dev \
             libjavascriptcoregtk-4.1-dev \
-            libsoup-3.0-dev
+            libsoup-3.0-dev \
+            rpm
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
@@ -74,6 +75,7 @@ jobs:
             src-tauri/target/release/bundle/appimage/*.AppImage
             src-tauri/target/release/bundle/appimage/*.AppImage.sig
             src-tauri/target/release/bundle/deb/*.deb
+            src-tauri/target/release/bundle/rpm/*.rpm
 
   release-macos:
     name: Release (macOS)
