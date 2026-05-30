@@ -3,30 +3,36 @@ import { ChevronRight } from "lucide-react";
 import { AppShell } from "@/layouts/app-shell";
 import { ScreenHeader } from "@/components/screen-header";
 import { useUpdater } from "@/hooks/use-updater";
+import { usePersistedStore } from "@/store/persisted";
 
-interface SettingsRow {
-  label: string;
-  description: string;
-  route: string;
-  available: boolean;
+function autoLockLabel(minutes: number): string {
+  if (minutes === 0) return "Auto-lock: never";
+  if (minutes < 60) return `Auto-lock: ${minutes}m`;
+  return `Auto-lock: ${minutes / 60}h`;
 }
-
-const ROWS: SettingsRow[] = [
-  { label: "Security", description: "Auto-lock, biometric unlock", route: "/settings/security", available: true },
-  { label: "Network", description: "RPC endpoints and developer mode", route: "/settings/network", available: true },
-  { label: "Appearance", description: "Theme, fonts, accent color, custom scheme", route: "/settings/appearance", available: true },
-  { label: "Approved dApps", description: "Review and revoke deep-link permissions", route: "/settings/dapps", available: true },
-  { label: "Request history", description: "Review deep-link approvals, rejections, and callbacks", route: "/settings/request-history", available: true },
-  { label: "Contacts", description: "Add, edit, import and export contacts", route: "/settings/contacts", available: true },
-  { label: "Notifications", description: "Desktop alerts for received, sent, confirmed", route: "/settings/notifications", available: true },
-  { label: "Support", description: "Sponsors, donate QU, GitHub", route: "/settings/support", available: true },
-  { label: "Diagnostics", description: "Runtime state, debug bundle, and native issue log", route: "/settings/diagnostics", available: true },
-];
 
 export default function SettingsScreen() {
   const navigate = useNavigate();
   const { appVersion, context, update, checking, upToDate, checkError, installing, progress, lastError, install } = useUpdater();
   const updaterSupported = context?.supportsAutoUpdate ?? true;
+
+  const autoLockMinutes = usePersistedStore((s) => s.settings.autoLockMinutes);
+  const notificationsEnabled = usePersistedStore((s) => s.settings.notificationsEnabled);
+  const theme = usePersistedStore((s) => s.settings.theme);
+  const contacts = usePersistedStore((s) => s.contacts);
+  const approvedDapps = usePersistedStore((s) => s.settings.approvedDapps ?? []);
+
+  const ROWS = [
+    { label: "Security", description: autoLockLabel(autoLockMinutes), route: "/settings/security" },
+    { label: "Network", description: "RPC endpoints and developer mode", route: "/settings/network" },
+    { label: "Appearance", description: `Theme: ${theme}`, route: "/settings/appearance" },
+    { label: "Approved dApps", description: approvedDapps.length ? `${approvedDapps.length} approved` : "No approved dApps", route: "/settings/dapps" },
+    { label: "Request history", description: "Deep-link approvals and callbacks", route: "/settings/request-history" },
+    { label: "Contacts", description: contacts.length ? `${contacts.length} contact${contacts.length === 1 ? "" : "s"}` : "No contacts yet", route: "/settings/contacts" },
+    { label: "Notifications", description: notificationsEnabled ? "Enabled" : "Disabled", route: "/settings/notifications" },
+    { label: "Support", description: "Sponsors, donate QU, GitHub", route: "/settings/support" },
+    { label: "Diagnostics", description: "Runtime state and debug bundle", route: "/settings/diagnostics" },
+  ];
 
   const statusBar = <ScreenHeader title="Settings" onBack={() => navigate("/dashboard")} />;
 
@@ -35,8 +41,7 @@ export default function SettingsScreen() {
       {ROWS.map((row) => (
         <button
           key={row.route}
-          onClick={() => row.available && navigate(row.route)}
-          disabled={!row.available}
+          onClick={() => navigate(row.route)}
           style={{
             display: "flex",
             alignItems: "center",
@@ -46,10 +51,9 @@ export default function SettingsScreen() {
             background: "none",
             border: "1px solid var(--color-border-strong)",
             borderRadius: "var(--radius-sharp)",
-            cursor: row.available ? "pointer" : "default",
+            cursor: "pointer",
             textAlign: "left",
             width: "100%",
-            opacity: row.available ? 1 : 0.4,
           }}
         >
           <div>
@@ -60,9 +64,7 @@ export default function SettingsScreen() {
               {row.description}
             </div>
           </div>
-          {row.available && (
-            <ChevronRight size={14} color="var(--color-text-secondary)" strokeWidth={1.5} style={{ flexShrink: 0 }} />
-          )}
+          <ChevronRight size={14} color="var(--color-text-secondary)" strokeWidth={1.5} style={{ flexShrink: 0 }} />
         </button>
       ))}
 
