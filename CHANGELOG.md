@@ -1,5 +1,14 @@
 # sigil
 
+## 0.11.10
+
+### Patch Changes
+
+- ba125f0: Fix AppImage failing to launch on Linux.
+
+  - **Linux:** The AppImage now runs without FUSE by using the go-appimage toolchain, which embeds a FUSE-free runtime.
+  - **Linux:** Fixed a startup crash on newer distros caused by a bundled `libmount` version mismatch with the system's `libgio`.
+
 ## 0.11.9
 
 ### Patch Changes
