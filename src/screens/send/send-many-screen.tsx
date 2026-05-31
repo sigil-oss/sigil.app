@@ -167,7 +167,7 @@ export default function SendManyScreen() {
     const updated = recipients.map((r) => {
       const identityError = isValidIdentity(r.identity.trim().toUpperCase()) ? "" : "INVALID IDENTITY";
       const amount = Number(r.amount.trim());
-      const amountError = r.amount.trim() && !isNaN(amount) && amount > 0 ? "" : "INVALID AMOUNT";
+      const amountError = r.amount.trim() && Number.isInteger(amount) && amount > 0 ? "" : "INVALID AMOUNT";
       if (identityError || amountError) ok = false;
       return { ...r, identityError, amountError };
     });
@@ -230,7 +230,10 @@ export default function SendManyScreen() {
     const n = Number(r.amount.trim());
     return sum + (isNaN(n) ? 0 : n);
   }, 0);
-  const totalAmountBigInt = recipients.reduce((sum, r) => sum + (r.amount.trim() ? BigInt(r.amount.trim()) : 0n), 0n);
+  const totalAmountBigInt = recipients.reduce((sum, r) => {
+    const n = Number(r.amount.trim());
+    return sum + (Number.isInteger(n) && n > 0 ? BigInt(n) : 0n);
+  }, 0n);
   const needsHighValueConfirmation = exceedsHighValueThreshold(totalAmountBigInt, settings.highValueSendThreshold);
 
   async function send() {

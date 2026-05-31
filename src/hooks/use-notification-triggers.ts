@@ -84,7 +84,7 @@ export function useNotificationTriggers() {
     }
 
     prevBalancesRef.current = { ...allBalances };
-  }, [allBalances, enabled, onReceived, pendingTxs, queryClient]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [allBalances, enabled, onReceived, onLargeIncoming, largeIncomingThresholdValue, pendingTxs, queryClient]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Sent: watch pendingTxs for additions ──────────────────────────────
   const prevPendingHashesRef = useRef<Set<string>>(
@@ -119,7 +119,7 @@ export function useNotificationTriggers() {
       }
     }
     prevPendingHashesRef.current = currentHashes;
-  }, [pendingTxs]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pendingTxs, enabled, onSent]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Confirmed / expired: driven by tick + tx history ─────────────────
   const { data: lastProcessedTickData } = useLastProcessedTick();
@@ -201,7 +201,7 @@ export function useNotificationTriggers() {
         }
       }
     }
-  }, [txHistory]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [txHistory, enabled, onConfirmed, onMissedConfirmations]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Expired: tx never appeared in history after target tick + 30 live ticks — always remove; notify if enabled.
   // Uses the live tick (same source as targetTick) so this fires reliably even if the archive lags.
@@ -226,7 +226,7 @@ export function useNotificationTriggers() {
         }
       }
     }
-  }, [currentTick, pendingTxs]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentTick, pendingTxs, enabled, onMissedConfirmations]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const { data: latestStats } = useLatestStats();
   const previousPriceRef = useRef<number | null>(null);
