@@ -5,18 +5,11 @@ export function truncateId(id: string, head = 8, tail = 8): string {
   return `${chars.slice(0, head).join("")}…${chars.slice(-tail).join("")}`;
 }
 
-function sanitizeText(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-}
-
 /** Extracts a human-readable message from an unknown thrown value. */
 export function extractMessage(e: unknown, fallback = "An error occurred."): string {
-  if (e instanceof Error) return sanitizeText(e.message);
-  if (typeof e === "string") return sanitizeText(e);
-  return sanitizeText(fallback);
+  if (e instanceof Error) return e.message;
+  if (typeof e === "string") return e;
+  return fallback;
 }
 
 /** Format a QU amount (bigint, string, or number) with locale-aware thousand separators. */

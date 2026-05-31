@@ -170,7 +170,7 @@ export default function BurnScreen() {
 
           <Divider />
 
-          <Button variant="danger" shape="sharp" onClick={send} disabled={!wallet || !tickInfo || hasPendingTx}>Burn {Number(amountStr).toLocaleString()} QU</Button>
+          <Button variant="danger" shape="sharp" onClick={send} disabled={!wallet || !tickInfo || hasPendingTx}>Burn {formatQu(amountStr)} QU</Button>
           <Button variant="ghost" shape="sharp" size="md" style={{ width: "auto", margin: "0 auto" }} onClick={() => setStep("input")}>Cancel</Button>
         </>
       )}
@@ -193,7 +193,7 @@ export default function BurnScreen() {
             </div>
           </div>
           <div style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-disabled)", letterSpacing: "0.05em" }}>
-            {Number(amountStr).toLocaleString()} QU DESTROYED
+            {formatQu(amountStr)} QU DESTROYED
           </div>
           <Button onClick={() => navigate("/dashboard")}>Done</Button>
         </div>
