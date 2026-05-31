@@ -1,278 +1,147 @@
+<div align="center">
+
+<img src="src-tauri/icons/128x128.png" alt="Sigil" width="80" />
+
 # Sigil
 
-Self-custodial Qubic wallet for desktop. Built with Tauri v2, React 19, and Rust.
+**Self-custodial Qubic desktop wallet**
 
-Sigil keeps keys encrypted on disk and signing material exclusively in volatile memory. No Sigil backend, no key escrow, no browser extension attack surface.
+[![Release](https://img.shields.io/github/v/release/sigil-oss/sigil.app?style=flat-square&color=0d0d0d&labelColor=1a1a1a)](https://github.com/sigil-oss/sigil.app/releases/latest)
+[![CI](https://img.shields.io/github/actions/workflow/status/sigil-oss/sigil.app/changeset.yml?style=flat-square&label=build&color=0d0d0d&labelColor=1a1a1a)](https://github.com/sigil-oss/sigil.app/actions)
+[![License](https://img.shields.io/badge/license-source--available-0d0d0d?style=flat-square&labelColor=1a1a1a)](./LICENSE)
+[![Discord](https://img.shields.io/badge/discord-join-0d0d0d?style=flat-square&labelColor=1a1a1a)](https://discord.gg/s5qNRNGu96)
+
+Windows · macOS (Universal) · Linux (AppImage · .deb · .rpm)
+
+[**Download**](https://github.com/sigil-oss/sigil.app/releases/latest) · [Website](https://sigil.app) · [Discord](https://discord.gg/s5qNRNGu96)
+
+</div>
 
 ---
 
+Keys stay encrypted on disk. Signing material lives only in Rust process memory and is wiped immediately on lock. No Sigil backend, no key escrow, no browser extension surface.
+
+## Features
+
+**Wallet**
+- Send, receive, burn, stake
+- Send Many — up to 25 transfers in a single session with CSV/JSON import
+- Full transaction history with memos and fiat price snapshots
+- Vault analytics — net flow, top counterparties, monthly summaries
+- Global search across accounts, contacts, tx hashes, and memos
+
+**Security**
+- AES-256-GCM encrypted vaults with Argon2 KDF
+- Auto-lock on idle, sleep, or window blur
+- Clipboard auto-clear; immediate wipe on lock
+- Biometric unlock — Windows Hello, macOS Touch ID, Linux secret store
+- Local audit log of every signing event
+- Signed update payload verification
+
+**dApp integration**
+- Native `sigil://` deep-link protocol
+- Request types: `transfer`, `sc_call`, `sign_message`, `verify_message`, `connect`
+- Replay protection via nonce store (1-hour window)
+- Result delivery via server callback POST or browser redirect
+- Request history with per-entry callback status
+
+**Desktop**
+- System tray with hide-to-tray
+- Desktop notifications with inbox, per-type filters, and price/balance alerts
+- Multiple vaults with color coding, watch-only support
+- Themes, font pairs, accent colors
+
 ## Security Model
 
-### Key storage
-
-Vault data is encrypted with AES-256-GCM before being written to disk. The encryption key is derived from the user's password using Argon2. App metadata (settings, contacts, history) is encrypted separately using a device-local key.
+Vault data is encrypted before hitting disk. Unlocked keys never leave the Rust process.
 
 ```mermaid
 flowchart LR
-    seed([Seed / private key]) -->|AES-256-GCM\nArgon2 KDF| vault[(Encrypted vault\non disk)]
-    vault -->|Password unlock| session[/Volatile session\nsigning keys/]
-    session -->|Auto-lock · sleep · blur\nor manual lock| wiped([Cleared from memory])
+    seed([Seed / private key]) -->|AES-256-GCM · Argon2| vault[(Encrypted vault on disk)]
+    vault -->|Password unlock| session[/Volatile session keys/]
+    session -->|Lock event| wiped([Cleared from memory])
 ```
 
-Unlocked signing material is held only in the Rust process's in-memory session state. It is never written to disk, never serialized, and cleared immediately on any lock event.
-
-### Process boundary
-
-Sensitive operations run in the Rust native layer, not the renderer:
+Sensitive operations are isolated to the Rust layer — the renderer only sends signing requests and receives back signed transactions.
 
 | Operation | Layer |
 |---|---|
 | Vault encryption / decryption | Rust (`aes-gcm`) |
 | Deep-link URL validation | Rust |
-| Nonce replay protection | Rust (persisted nonce store) |
+| Nonce replay protection | Rust |
 | Callback HTTP posting | Rust (`reqwest`) |
-| Redirect URI browser launch | Rust (`tauri-plugin-opener`) |
 | Auto-lock timer | Rust (background thread) |
 | Clipboard clear | Rust |
-| Update payload verification | Rust (built-in Tauri updater key) |
+| Update payload verification | Rust |
 
-The renderer never touches raw seeds or signing keys directly. It sends a signing request to the Rust layer and receives a signed transaction back.
+## Deep-Link Protocol
 
-### Threat model boundaries
-
-- **Encrypted at rest.** Vault files are opaque ciphertext without the password.
-- **No cloud custody.** Sigil never transmits keys or seeds to any server.
-- **Replay protection.** Each `sigil://` deep-link carries a nonce; Sigil stores seen nonces and rejects replays for up to one hour.
-- **Delivery URL validation.** Rust rejects `callback` and `redirect_uri` URLs targeting private or loopback addresses except `localhost`/`127.0.0.1` for local development.
-- **Signed update payloads.** Desktop updates are verified against the embedded updater signing key before installation.
-
----
-
-## Deep-Link Architecture
-
-Sigil registers the `sigil://` protocol. dApps send requests by constructing a `sigil://v1/request?d=<base64url-envelope>` URL and opening it.
-
-### End-to-end flow
+dApps send requests by opening a `sigil://v1/request?d=<base64url-envelope>` URL. Sigil validates, queues, and presents a review screen. Results are delivered to the dApp via callback POST or redirect URL.
 
 ```mermaid
 sequenceDiagram
-    participant dApp as dApp / browser
-    participant OS as OS protocol handler
+    participant dApp
     participant Rust as Rust layer
-    participant React as Renderer (React)
+    participant React as Renderer
     participant User
 
-    dApp->>OS: open sigil://v1/request?d=<payload>
-    OS->>Rust: single-instance callback or on_open_url
-    Rust->>Rust: validate URL, check nonce, store payload
+    dApp->>Rust: open sigil://v1/request?d=<payload>
+    Rust->>Rust: validate URL · check nonce · store payload
     Rust->>React: emit sigil:request event
-    Note over React: Event may arrive before renderer is ready
-    React->>Rust: invoke get_pending_request (on hydration)
-    Rust->>React: return stored payload
-    React->>React: parseSigilEnvelope (zod schema)
     React->>User: request review UI
-    User->>React: Approve or Reject
-    alt callback set
-        React->>Rust: invoke post_callback(url, body)
-        Rust->>dApp: HTTP POST result JSON
-    end
-    alt redirect_uri set
-        React->>Rust: openUrl(redirect_uri?result=<base64url>)
-        Rust->>dApp: browser opens redirect_uri with result param
-    end
+    User->>React: approve / reject
+    React->>Rust: post_callback(url, body)
+    Rust->>dApp: HTTP POST result JSON
 ```
 
-If the app is locked when a request arrives, the request is held in the session queue. After unlock, the lock screen routes directly to the request review screen.
-
-### Request types
-
-| Type | Description |
-|---|---|
-| `transfer` | Sign a QU transfer to a specified recipient |
-| `sc_call` | Sign a smart contract input with typed index and payload |
-| `sign_message` | Sign an arbitrary message for off-chain auth or attestation |
-| `verify_message` | Verify an existing signature bundle |
-| `connect` | Request a wallet session with declared permissions |
-
-### Result delivery
-
-Two delivery modes are available. Both can be set on the same request and fire independently.
-
-| Field | How it works |
-|---|---|
-| `callback` | Sigil POSTs the result as JSON from the Rust layer after the user acts |
-| `redirect_uri` | Sigil opens `redirect_uri?result=<base64url JSON>` in the default browser after the user acts |
-
-`callback` is the right choice for dApps with a server — it keeps the result off the browser URL bar. `redirect_uri` works for static sites and SPAs with no backend; the result is read from `location.search` client-side. Both approve and reject outcomes are delivered to whichever modes are set.
-
----
-
-## Vault and Session Architecture
-
-```mermaid
-flowchart TB
-    subgraph disk[Disk — AES-256-GCM encrypted]
-        vaultStore[(Vault store)]
-        metaStore[(App metadata store)]
-        nonceStore[(Seen nonces)]
-        biometricStore[(Biometric key references)]
-    end
-
-    subgraph volatile[Volatile memory only — cleared on lock]
-        sessionKeys[Session signing keys]
-        clipboardPending[Clipboard clear timer]
-    end
-
-    subgraph rust[Rust process]
-        autolock[Auto-lock watcher\nIdle · sleep · blur]
-        dlQueue[Deep-link queue\nVecDeque]
-        cbPoster[Callback poster\nreqwest]
-        clipMgr[Clipboard manager]
-    end
-
-    disk -- password unlock --> volatile
-    volatile -- lock event --> disk
-    rust -- drives --> volatile
-```
-
-Multiple vaults can coexist. Only one vault is unlocked at a time. Watch-only vaults (no seeds, tracking-only) open without a password.
-
----
-
-## Request Schema
-
-Sigil shares a single Zod schema between the native validation path (JS renderer) and the Rust URL validator. A request that passes Rust validation is guaranteed to parse cleanly in the renderer.
-
-The envelope shape:
-
-```ts
-interface SigilEnvelope {
-  request: SigilRequest;      // discriminated union on "type"
-  callback?: string | null;   // server POST delivery
-  redirect_uri?: string | null; // client redirect delivery
-}
-```
-
-Use [`@sigil-oss/connect`](https://github.com/sigil-oss/sigil.connect) to build envelopes and handle result delivery — including the `sigilRequest()` async API that wraps the full round-trip in a single `await`.
-
----
+Use [`@sigil-oss/connect`](https://github.com/sigil-oss/sigil.connect) to build envelopes and handle result delivery from any framework.
 
 ## Build Locally
 
-### Requirements
-
-- [Rust stable](https://rustup.rs/)
-- [Bun](https://bun.sh/)
-- platform prerequisites from the [Tauri v2 guide](https://v2.tauri.app/start/prerequisites/)
-
-### Commands
+**Requirements:** [Rust stable](https://rustup.rs/) · [Bun](https://bun.sh/) · [Tauri v2 prerequisites](https://v2.tauri.app/start/prerequisites/)
 
 ```sh
 git clone https://github.com/sigil-oss/sigil.app
 cd sigil.app
 bun install
-bun run tauri dev
-bun run tauri build
+bun tauri dev        # dev server
+bun tauri build      # production bundle → src-tauri/target/release/bundle/
 ```
 
-Production bundles land under `src-tauri/target/release/bundle/`.
-
-### Automated checks
-
+**Checks:**
 ```sh
-bun run lint
+bun run typecheck
 bun run test
-bun run build
 cargo check --manifest-path src-tauri/Cargo.toml
 ```
 
----
-
-## Tech Stack
+## Stack
 
 | Layer | Choice |
 |---|---|
 | Desktop shell | Tauri v2 |
 | Frontend | React 19 + TypeScript |
-| Local state | Zustand v5 |
-| Async state | TanStack Query v5 |
+| State | Zustand v5 + TanStack Query v5 |
 | Animations | Motion |
-| Native layer | Rust |
-| Vault crypto | `aes-gcm` (Rust) |
-| Qubic SDK | `@qubic-lib/{crypto,tx,rpc,contracts,types}` |
+| Native | Rust |
+| Crypto | `aes-gcm` (Rust) |
+| Qubic SDK | `@qubic-lib/{crypto,tx,rpc,contracts}` |
 
----
+## Updater
 
-## Feature Surface
-
-### Vaults and accounts
-
-- AES-256-GCM encrypted seeded vaults
-- Watch-only vaults (no seeds, balance and history tracking only)
-- Multiple accounts per vault with notes and tags
-- Per-vault color coding and identicon display
-- Vault export with signed envelope format (V2) and version/signature verification on import
-- Seed reveal gated by optional biometric or password re-check
-
-### Wallet operations
-
-- Send, receive, burn, send-to-many
-- CSV / JSON recipient import for batch sends
-- Tick offset control for advanced transaction targeting
-- Full transaction history with memos and fiat-at-time price snapshots
-- Vault analytics: net flow, top counterparties, contract usage, monthly summaries
-- Global search across accounts, contacts, tx hashes, memos, and known contracts
-
-### dApp and request handling
-
-- Native `sigil://` protocol registration
-- Request queue (multiple requests from the same dApp can stack)
-- Decoded previews for common Qubic contract procedures (Qearn lock/unlock, etc.)
-- Request history with per-entry callback status
-- Result delivery via server POST (`callback`) or browser redirect (`redirect_uri`) — both modes supported simultaneously
-- Callback retry, save-as-JSON, and clipboard copy on delivery failure
-
-### Security controls
-
-- Auto-lock: idle timeout (configurable), sleep detection, optional window blur lock
-- Clipboard auto-clear with configurable timeout; immediate clear on lock
-- High-value send confirmation threshold
-- Optional password re-check for burn operations
-- Biometric / secure storage unlock (macOS Touch ID, Windows Hello, Linux secret store)
-- Local audit log: unlocks, failed attempts, exports, seed reveals, request approvals/rejections
-- Replay protection on all incoming deep-link requests (nonce tracking, 1-hour window)
-
-### Desktop experience
-
-- System tray with hide-to-tray support
-- Desktop notifications with inbox history and per-type filters
-- Granular network polling profiles: active, background, tray-hidden, locked
-- Contacts with address suggestions and recent recipient assist
-- Diagnostics screen and redacted debug bundle export
-- Visual themes, font pairs, accent colors, and custom color schemes
-
----
-
-## Updater Notes
-
-Signed desktop updates. Platform behavior:
-
-| Platform | Path |
+| Platform | Update path |
 |---|---|
-| Windows | Built-in NSIS updater |
-| macOS | Built-in app updater |
+| Windows | NSIS built-in updater |
+| macOS | App built-in updater |
 | Linux AppImage | Built-in updater |
-| Linux deb / rpm | Update through the package manager you installed from |
-
----
+| Linux deb / rpm | System package manager |
 
 ## Community
 
-- GitHub: https://github.com/sigil-oss/sigil.app
-- Discord: https://discord.gg/s5qNRNGu96
-
----
+- **Discord:** https://discord.gg/s5qNRNGu96
+- **GitHub:** https://github.com/sigil-oss/sigil.app
+- **Website:** https://sigil.app
 
 ## License
 
-See the repository license and source history for current terms.
+Source-available. See repository for current terms.
