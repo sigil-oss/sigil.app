@@ -31,6 +31,8 @@ export function useNotificationTriggers() {
 
   const identity = wallets[activeIndex]?.identity ?? null;
   const queryClient = useQueryClient();
+  const pendingTxsRef = useRef(pendingTxs);
+  pendingTxsRef.current = pendingTxs;
   const largeIncomingThresholdValue = (() => {
     try {
       return largeIncomingThreshold ? BigInt(largeIncomingThreshold) : null;
@@ -72,9 +74,9 @@ export function useNotificationTriggers() {
       }
     }
 
-    if (changedIds.size > 0 && pendingTxs.length > 0) {
+    if (changedIds.size > 0 && pendingTxsRef.current.length > 0) {
       const affected = new Set<string>();
-      for (const pending of pendingTxs) {
+      for (const pending of pendingTxsRef.current) {
         if (changedIds.has(pending.source)) affected.add(pending.source);
         if (changedIds.has(pending.destination)) affected.add(pending.destination);
       }
@@ -84,7 +86,7 @@ export function useNotificationTriggers() {
     }
 
     prevBalancesRef.current = { ...allBalances };
-  }, [allBalances, enabled, onReceived, onLargeIncoming, largeIncomingThresholdValue, pendingTxs, queryClient]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [allBalances, enabled, onReceived, onLargeIncoming, largeIncomingThresholdValue, queryClient]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Sent: watch pendingTxs for additions ──────────────────────────────
   const prevPendingHashesRef = useRef<Set<string>>(
