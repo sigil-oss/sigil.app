@@ -7,7 +7,8 @@ use tauri::command;
 
 const VAULT_VERSION: u32 = 1;
 const PBKDF2_ITERATIONS: u32 = 600_000;
-const SALT_BYTES: usize = 16;
+const MIN_PBKDF2_ITERATIONS: u32 = 100_000;
+const SALT_BYTES: usize = 32;
 const IV_BYTES: usize = 12;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -30,7 +31,7 @@ fn derive_key(password: &str, salt: &[u8], iterations: u32) -> [u8; 32] {
 
 pub fn encrypt_vault_data(password: &str, seeds: &[String]) -> Result<VaultData, String> {
     let salt_key = Aes256Gcm::generate_key(&mut OsRng);
-    let salt = &salt_key[..SALT_BYTES];
+    let salt = salt_key.as_slice(); // full 32 bytes (SALT_BYTES)
     let iv = Aes256Gcm::generate_nonce(&mut OsRng);
 
     let key = derive_key(password, salt, PBKDF2_ITERATIONS);
@@ -61,11 +62,14 @@ pub fn decrypt_vault_data(vault_data: &VaultData, password: &str) -> Result<Vec<
     let iv = hex::decode(&vault_data.iv).map_err(|_| "malformed iv".to_string())?;
     let ciphertext =
         hex::decode(&vault_data.ciphertext).map_err(|_| "malformed ciphertext".to_string())?;
-    if salt.len() != SALT_BYTES {
+    if salt.len() != 16 && salt.len() != SALT_BYTES {
         return Err("malformed salt".to_string());
     }
     if iv.len() != IV_BYTES {
         return Err("malformed iv".to_string());
+    }
+    if vault_data.iterations < MIN_PBKDF2_ITERATIONS {
+        return Err(format!("vault iteration count too low: {}", vault_data.iterations));
     }
 
     let key = derive_key(password, &salt, vault_data.iterations);
