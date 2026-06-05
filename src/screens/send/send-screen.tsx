@@ -700,7 +700,8 @@ const PRICE_APPLY_BTN: React.CSSProperties = {
 function BalanceBar({ balance, amountStr, onMax }: { balance: bigint | null; amountStr: string; onMax?: () => void }) {
   if (balance === null) return null;
   const n = amountStr.trim();
-  const entered = n ? BigInt(n) : 0n;
+  let entered = 0n;
+  try { entered = n ? BigInt(n) : 0n; } catch { /* non-integer input — treat as 0 */ }
   const remaining = balance - entered;
   const over = remaining < 0n;
   return (
