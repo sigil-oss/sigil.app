@@ -29,7 +29,6 @@ export function useDeepLink() {
       const parsed = parseSigilEnvelope(payload);
       if (!parsed.envelope) return;
       enqueuePendingRequestRef.current(payload);
-      invoke("clear_pending_request").catch(() => {});
       recordAuditEvent({
         kind: "request_received",
         status: "info",
@@ -54,6 +53,7 @@ export function useDeepLink() {
 
     listen<string>("sigil:request", (event) => {
       applyPayload(event.payload);
+      invoke("clear_pending_request").catch(() => {});
     }).then((fn) => { unlisten = fn; }).catch(() => {});
 
     // Cold start: wait for the persisted store to hydrate before reading the Rust-side stored
@@ -64,8 +64,10 @@ export function useDeepLink() {
         while (true) {
           const payload = await invoke<string | null>("get_pending_request");
           if (!payload) break;
-          applyPayload(payload);
+          // Clear before applyPayload so a failure in applyPayload doesn't re-process
+          // the same payload on the next loop iteration.
           await invoke("clear_pending_request");
+          applyPayload(payload);
         }
       } catch {
         // non-fatal
