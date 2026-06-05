@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSessionStore } from "@/store/session";
 import { usePersistedStore } from "@/store/persisted";
 
@@ -23,7 +23,17 @@ export function useSigningAccount(from?: string): SigningAccount {
 
   const [selectedIndex, setSelectedIndex] = useState(settings.activeAccountIndex);
 
+  // Keep in sync when the active account changes externally (e.g. user switches
+  // accounts on another screen while the request screen is already open).
+  useEffect(() => {
+    setSelectedIndex(settings.activeAccountIndex);
+  }, [settings.activeAccountIndex]);
+
   const nameAt = (i: number) => vault?.accounts[i]?.name ?? `Account ${i + 1}`;
+
+  if (wallets.length === 0) {
+    return { wallet: null, accountName: "", fromError: null, selectedIndex: 0, setSelectedIndex, showPicker: false };
+  }
 
   if (from) {
     const idx = wallets.findIndex((w) => w.identity === from);
@@ -47,7 +57,7 @@ export function useSigningAccount(from?: string): SigningAccount {
     };
   }
 
-  const effectiveIndex = Math.min(selectedIndex, wallets.length - 1);
+  const effectiveIndex = Math.min(Math.max(0, selectedIndex), wallets.length - 1);
   return {
     wallet: wallets[effectiveIndex] ?? null,
     accountName: nameAt(effectiveIndex),
