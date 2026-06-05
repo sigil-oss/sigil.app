@@ -219,7 +219,9 @@ fn get_or_create_store_key() -> Result<Key<Aes256Gcm>, String> {
             return decode_store_key(&encoded, "stored metadata key");
         }
         Ok(None) => {}
-        Err(_err) => {}
+        Err(err) => {
+            eprintln!("[sigil] keyring read failed — falling back to file key (existing data may be unreadable if a new key is generated): {err}");
+        }
     }
 
     if let Some(encoded) = load_store_key_file()? {
