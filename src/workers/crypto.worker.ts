@@ -19,7 +19,7 @@ type WorkerRequest =
   | {
       id: number;
       type: "sign_tx";
-      seed: string;
+      seed: Uint8Array;
       destination: string;
       amount: string;
       targetTick: number;
@@ -30,16 +30,18 @@ type WorkerRequest =
   | {
       id: number;
       type: "sign_message";
-      seed: string;
+      seed: Uint8Array;
       messageBytes: Uint8Array;
     };
+
+const _workerDecoder = new TextDecoder();
 
 self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
   const req = e.data;
   try {
     if (req.type === "sign_tx") {
       const { id, seed, destination, amount, targetTick, currentTick, inputType, payload } = req;
-      const typedSeed = toSeed(seed);
+      const typedSeed = toSeed(_workerDecoder.decode(seed));
       const sourcePublicKey = publicKeyFromSeed(typedSeed);
       const txBytes = buildTransaction({
         sourcePublicKey,
@@ -54,7 +56,7 @@ self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
       self.postMessage({ id, ok: true, encoded: encodeTransaction(signed), hash: computeTransactionHash(signed) });
     } else if (req.type === "sign_message") {
       const { id, seed, messageBytes } = req;
-      const typedSeed = toSeed(seed);
+      const typedSeed = toSeed(_workerDecoder.decode(seed));
       const digest = k12(messageBytes, 32);
       const signature = await sign(digest, typedSeed);
       const publicKey = publicKeyFromSeed(typedSeed);

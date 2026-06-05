@@ -3,7 +3,6 @@ import type { Seed } from "@/lib/crypto";
 import type { SessionWallet } from "@/lib/session-wallet";
 
 const encoder = new TextEncoder();
-const decoder = new TextDecoder();
 
 type SecretSeed = Uint8Array;
 
@@ -52,11 +51,11 @@ function getSigningWorker(): Worker {
   return _worker;
 }
 
-function workerRequest<T>(message: Record<string, unknown>): Promise<T> {
+function workerRequest<T>(message: Record<string, unknown>, transfer: Transferable[] = []): Promise<T> {
   const id = _nextId++;
   return new Promise<T>((resolve, reject) => {
     _pending.set(id, { resolve: resolve as (v: unknown) => void, reject });
-    getSigningWorker().postMessage({ id, ...message });
+    getSigningWorker().postMessage({ id, ...message }, transfer);
   });
 }
 
@@ -64,10 +63,6 @@ function workerRequest<T>(message: Record<string, unknown>): Promise<T> {
 
 function seedToBytes(seed: Seed): SecretSeed {
   return encoder.encode(seed);
-}
-
-function seedBytesToString(seed: SecretSeed): Seed {
-  return decoder.decode(seed) as Seed;
 }
 
 function zeroBytes(bytes: Uint8Array) {
@@ -106,17 +101,17 @@ async function buildSignedTransaction({
   inputType,
   payload,
 }: BuildTxParams): Promise<SignedTxResult> {
-  const seed = seedBytesToString(requireSeed(accountIndex));
+  const seedCopy = requireSeed(accountIndex).slice(); // clone — don't detach activeSeeds entry
   return workerRequest<SignedTxResult>({
     type: "sign_tx",
-    seed,
+    seed: seedCopy,
     destination,
     amount: amount.toString(),
     targetTick,
     currentTick,
     inputType,
     payload,
-  });
+  }, [seedCopy.buffer]);
 }
 
 export function buildTransferFromSession(params: Omit<BuildTxParams, "inputType" | "payload">) {
@@ -128,12 +123,12 @@ export function buildScTransactionFromSession(params: BuildTxParams) {
 }
 
 export async function signMessageFromSession(accountIndex: number, messageBytes: Uint8Array) {
-  const seed = seedBytesToString(requireSeed(accountIndex));
+  const seedCopy = requireSeed(accountIndex).slice(); // clone — don't detach activeSeeds entry
   const result = await workerRequest<{ signature: Uint8Array; publicKey: Uint8Array; identity: string }>({
     type: "sign_message",
-    seed,
+    seed: seedCopy,
     messageBytes,
-  });
+  }, [seedCopy.buffer]);
   return {
     signature: new Uint8Array(result.signature),
     publicKey: new Uint8Array(result.publicKey),
