@@ -13,7 +13,7 @@
 
 Windows · macOS (Universal) · Linux (AppImage · .deb · .rpm)
 
-[**Download**](https://github.com/sigil-oss/sigil.app/releases/latest) · [Website](https://sigil.app) · [Discord](https://discord.gg/s5qNRNGu96)
+[**Download**](https://github.com/sigil-oss/sigil.app/releases/latest) · [Website](https://sigilwallet.org) · [Discord](https://discord.gg/s5qNRNGu96)
 
 </div>
 
@@ -140,7 +140,7 @@ cargo check --manifest-path src-tauri/Cargo.toml
 
 - **Discord:** https://discord.gg/s5qNRNGu96
 - **GitHub:** https://github.com/sigil-oss/sigil.app
-- **Website:** https://sigil.app
+- **Website:** https://sigilwallet.org
 
 ## License
 
