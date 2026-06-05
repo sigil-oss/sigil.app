@@ -59,7 +59,9 @@ fn store_key_file(secret: &str) -> Result<(), String> {
     {
         use std::os::unix::fs::PermissionsExt;
         let perms = std::fs::Permissions::from_mode(0o600);
-        let _ = std::fs::set_permissions(&path, perms);
+        if let Err(e) = std::fs::set_permissions(&path, perms) {
+            eprintln!("[sigil] warning: could not restrict store-key file permissions (file may be world-readable): {e}");
+        }
     }
 
     Ok(())
