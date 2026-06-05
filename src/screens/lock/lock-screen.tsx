@@ -91,7 +91,8 @@ export default function LockScreen() {
 
   async function doUnlock(password: string) {
     if (!vault) return;
-    const seeds = await unlockVault(vault.encryptedData!, password);
+    if (!vault.encryptedData) { setError("VAULT DATA MISSING"); return; }
+    const seeds = await unlockVault(vault.encryptedData, password);
     await finishUnlock(seeds);
   }
 
@@ -144,10 +145,11 @@ export default function LockScreen() {
     if (!vault || bioFailures >= 3) return;
     setLoading(true);
     setError("");
+    if (!vault.encryptedData) { setError("VAULT DATA MISSING"); setLoading(false); return; }
     try {
       const seeds = await invoke<string[]>("biometric_unlock", {
         vaultId: vault.id,
-        vaultData: vault.encryptedData!,
+        vaultData: vault.encryptedData,
       });
       await finishUnlock(seeds.map(toSeed));
     } catch (e) {
