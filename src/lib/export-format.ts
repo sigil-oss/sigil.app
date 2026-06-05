@@ -24,7 +24,6 @@ async function ensureExportSigningSecret(): Promise<string> {
   const secret = btoa(Array.from(secretBytes, (b) => String.fromCharCode(b)).join(""));
   usePersistedStore.getState().updateSettings({
     exportSigningPrivateJwk: { kty: "oct", k: secret, alg: "HS256", key_ops: ["sign", "verify"], ext: true },
-    exportSigningPublicJwk: { kty: "oct", k: secret, alg: "HS256", key_ops: ["verify"], ext: true },
   });
   return secret;
 }

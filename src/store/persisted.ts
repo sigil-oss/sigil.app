@@ -91,7 +91,6 @@ export interface AppSettings {
   requireBiometricForSeedReveal: boolean;
   highValueSendThreshold: string;
   exportSigningPrivateJwk: JsonWebKey | null;
-  exportSigningPublicJwk: JsonWebKey | null;
 }
 
 export interface Contact {
@@ -243,7 +242,6 @@ const DEFAULT_SETTINGS: AppSettings = {
   requireBiometricForSeedReveal: false,
   highValueSendThreshold: "",
   exportSigningPrivateJwk: null,
-  exportSigningPublicJwk: null,
 };
 
 const _disk = new LazyStore("sigil.json");
