@@ -7,20 +7,22 @@ import { getVaultAccountIdentity } from "@/lib/accounts";
 import { dedupeTxRecords, normalizeArchiveTransaction } from "@/lib/tx-domain";
 
 const PAGE_SIZE = 100;
+const MAX_PAGES = 20; // cap at 2 000 transactions per identity
 
-async function fetchAllTransactionsForIdentity(identity: string): Promise<AnalyticsTxLike[]> {
+async function fetchAllTransactionsForIdentity(identity: string, signal?: AbortSignal): Promise<AnalyticsTxLike[]> {
   const client = getRpcClient();
   const transactions: AnalyticsTxLike[] = [];
   let offset = 0;
 
-  while (true) {
+  for (let page = 0; page < MAX_PAGES; page++) {
+    if (signal?.aborted) break;
     const result = await client.archive.getTransactionsForIdentity({
       identity,
       pagination: { size: PAGE_SIZE, offset },
     });
     if (!result.ok) break;
-    const page = result.value.transactions ?? [];
-    const normalized = page
+    const records = result.value.transactions ?? [];
+    const normalized = records
       .map(normalizeArchiveTransaction)
       .filter((tx): tx is NonNullable<typeof tx> => !!tx)
       .map((tx) => ({
@@ -32,7 +34,7 @@ async function fetchAllTransactionsForIdentity(identity: string): Promise<Analyt
         moneyFlew: tx.moneyFlew,
       }));
     transactions.push(...normalized);
-    if (page.length < PAGE_SIZE) break;
+    if (records.length < PAGE_SIZE) break;
     offset += PAGE_SIZE;
   }
 
@@ -51,8 +53,8 @@ export function useVaultAnalytics() {
 
   return useQuery({
     queryKey: ["vault-analytics", settings.activeVaultId, identities],
-    queryFn: async () => {
-      const all = await Promise.all(identities.map((identity) => fetchAllTransactionsForIdentity(identity)));
+    queryFn: async ({ signal }) => {
+      const all = await Promise.all(identities.map((identity) => fetchAllTransactionsForIdentity(identity, signal)));
       return buildVaultAnalytics(new Set(identities), dedupeTxRecords(all.flat()));
     },
     enabled: identities.length > 0,
