@@ -109,13 +109,17 @@ export async function parseSignedExportEnvelope<T>(raw: string, expectedType: Si
     const secret = settings.exportSigningPrivateJwk?.k && typeof settings.exportSigningPrivateJwk.k === "string"
       ? settings.exportSigningPrivateJwk.k
       : "";
-    const verified =
+    const schemaOk =
       envelope.meta?.schema === "sigil_export" &&
       envelope.meta?.version === 2 &&
       envelope.meta?.exportType === expectedType &&
-      envelope.meta?.payloadHash === payloadHash &&
-      !!secret &&
-      await verifySignature(secret, `${expectedType}:${envelope.meta.createdAt}:${payloadHash}`, envelope.meta.signature);
+      envelope.meta?.payloadHash === payloadHash;
+    let verified = false;
+    if (schemaOk && secret) {
+      const sigOk = await verifySignature(secret, `${expectedType}:${envelope.meta.createdAt}:${payloadHash}`, envelope.meta.signature);
+      if (!sigOk) throw new Error("Export file failed integrity check — file may be corrupted or tampered");
+      verified = true;
+    }
     return {
       payload: envelope.payload,
       version: envelope.meta?.version ?? 2,
