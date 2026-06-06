@@ -38,6 +38,7 @@ fn load_store_key_file() -> Result<Option<String>, String> {
     }
 }
 
+#[cfg(target_os = "windows")]
 fn delete_store_key_file() -> Result<(), String> {
     let path = store_key_path()?;
     match std::fs::remove_file(path) {
@@ -197,16 +198,19 @@ fn migrate_file_key_to_secure_store(encoded: &str) -> Result<Key<Aes256Gcm>, Str
     let key = decode_store_key(encoded, "stored metadata key file")?;
     match secret_store::store(STORE_KEY_TARGET, encoded) {
         Ok(()) => {
+            // Keep the file — on Linux the keyring backend may be in-memory only
+            // (no features enabled = mock backend) or session-scoped, so the file
+            // is the only guaranteed persistent copy.
+            #[cfg(target_os = "windows")]
             let _ = delete_store_key_file();
-            Ok(key)
         }
         Err(err) => {
             eprintln!(
                 "[sigil] secure metadata-key storage unavailable, continuing with file fallback: {err}"
             );
-            Ok(key)
         }
     }
+    Ok(key)
 }
 
 fn get_or_create_store_key() -> Result<Key<Aes256Gcm>, String> {
@@ -218,6 +222,13 @@ fn get_or_create_store_key() -> Result<Key<Aes256Gcm>, String> {
     #[cfg(not(target_os = "windows"))]
     match secret_store::load_optional(STORE_KEY_TARGET) {
         Ok(Some(encoded)) => {
+            // Ensure file backup exists — the keyring may be volatile (mock backend,
+            // session keyring, or secret-service daemon not persistent across reboots).
+            if matches!(load_store_key_file(), Ok(None)) {
+                if let Err(e) = store_key_file(&encoded) {
+                    eprintln!("[sigil] warning: could not write store-key file backup: {e}");
+                }
+            }
             return decode_store_key(&encoded, "stored metadata key");
         }
         Ok(None) => {}
@@ -239,7 +250,13 @@ fn get_or_create_store_key() -> Result<Key<Aes256Gcm>, String> {
     let encoded = URL_SAFE_NO_PAD.encode(key.as_slice());
     match secret_store::store(STORE_KEY_TARGET, &encoded) {
         Ok(()) => {
+            // On Windows the credential store is reliably persistent; clean up any leftover file.
+            // On Linux/macOS the keyring backend may be in-memory or session-scoped when no
+            // features are enabled, so always write the file as the authoritative backup.
+            #[cfg(target_os = "windows")]
             let _ = delete_store_key_file();
+            #[cfg(not(target_os = "windows"))]
+            store_key_file(&encoded)?;
         }
         Err(err) => {
             eprintln!(
