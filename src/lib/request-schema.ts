@@ -29,8 +29,8 @@ export const transferRequestSchema = baseRequestSchema.extend({
 
 export const scCallRequestSchema = baseRequestSchema.extend({
   type: z.literal("sc_call"),
-  contract_index: z.number().int(),
-  input_type: z.number().int(),
+  contract_index: z.number().int().min(0).max(1023),
+  input_type: z.number().int().min(0).max(65535),
   from: z.string().optional(),
   amount: amountSchema.optional(),
   payload: z.string().optional(),
