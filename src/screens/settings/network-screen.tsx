@@ -146,6 +146,33 @@ export default function NetworkScreen() {
         </div>
       </div>
 
+      {/* Custom price feed */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
+        <div>
+          <div style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-body)", fontWeight: 500, color: "var(--color-text-primary)" }}>
+            Custom price feed
+          </div>
+          <div style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-label)", color: "var(--color-text-secondary)", marginTop: "var(--space-1)" }}>
+            Override the default price source. Must return <code>{`{"data":{"price":0.0,...}}`}</code>
+          </div>
+        </div>
+        <Input
+          label="Price feed URL (optional)"
+          value={settings.customPriceFeedUrl}
+          onChange={(e) => updateSettings({ customPriceFeedUrl: e.target.value.trim() })}
+          placeholder="https://example.com/v1/latest-stats"
+          style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)" }}
+        />
+        {settings.customPriceFeedUrl && (
+          <button
+            onClick={() => updateSettings({ customPriceFeedUrl: "" })}
+            style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-disabled)", letterSpacing: "0.05em", padding: 0, textAlign: "left" }}
+          >
+            CLEAR (use default)
+          </button>
+        )}
+      </div>
+
       {/* Tick offset */}
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
         <div>

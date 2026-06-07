@@ -16,8 +16,8 @@ function buildStatsUrl(liveApiUrl: string): string {
   return new URL("/v1/latest-stats", base).toString();
 }
 
-async function fetchLatestStats(liveApiUrl: string): Promise<LatestStats> {
-  const res = await fetch(buildStatsUrl(liveApiUrl));
+async function fetchLatestStats(url: string): Promise<LatestStats> {
+  const res = await fetch(url);
   if (!res.ok) throw new Error("stats fetch failed");
   const json = (await res.json()) as { data: LatestStats };
   return json.data;
@@ -25,10 +25,12 @@ async function fetchLatestStats(liveApiUrl: string): Promise<LatestStats> {
 
 export function useLatestStats() {
   const liveApiUrl = usePersistedStore((s) => s.settings.network.liveApiUrl);
+  const customPriceFeedUrl = usePersistedStore((s) => s.settings.customPriceFeedUrl);
   const pollingIntervalMs = usePollingIntervalMs();
+  const url = customPriceFeedUrl || buildStatsUrl(liveApiUrl);
   return useQuery({
-    queryKey: ["latest-stats", liveApiUrl],
-    queryFn: () => fetchLatestStats(liveApiUrl),
+    queryKey: ["latest-stats", url],
+    queryFn: () => fetchLatestStats(url),
     staleTime: 60_000,
     retry: 1,
     refetchInterval: Math.max(15_000, pollingIntervalMs),
