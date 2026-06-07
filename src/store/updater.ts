@@ -19,6 +19,7 @@ interface UpdaterStoreState {
   checking: boolean;
   upToDate: boolean;
   checkError: boolean;
+  installError: boolean;
   installing: boolean;
   progress: number;
   lastCheckedAt: number | null;
@@ -41,6 +42,7 @@ export const useUpdaterStore = create<UpdaterStoreState>()((set, get) => ({
   checking: true,
   upToDate: false,
   checkError: false,
+  installError: false,
   installing: false,
   progress: 0,
   lastCheckedAt: null,
@@ -133,7 +135,7 @@ export const useUpdaterStore = create<UpdaterStoreState>()((set, get) => ({
       return;
     }
 
-    set({ installing: true, progress: 0, lastError: "" });
+    set({ installing: true, installError: false, progress: 0, lastError: "" });
     let downloaded = 0;
     let total = 0;
     try {
@@ -149,6 +151,7 @@ export const useUpdaterStore = create<UpdaterStoreState>()((set, get) => ({
       const detail = updaterErrorMessage("Update install failed", error);
       set({
         installing: false,
+        installError: true,
         lastError: detail,
       });
       recordRuntimeIssue({
@@ -159,5 +162,5 @@ export const useUpdaterStore = create<UpdaterStoreState>()((set, get) => ({
     }
   },
 
-  resetError: () => set({ lastError: "", checkError: false }),
+  resetError: () => set({ lastError: "", checkError: false, installError: false }),
 }));

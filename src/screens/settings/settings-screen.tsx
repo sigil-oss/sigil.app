@@ -13,7 +13,7 @@ function autoLockLabel(minutes: number): string {
 
 export default function SettingsScreen() {
   const navigate = useNavigate();
-  const { appVersion, context, update, checking, upToDate, checkError, installing, progress, lastError, install } = useUpdater();
+  const { appVersion, context, update, checking, upToDate, checkError, installError, installing, progress, lastError, install } = useUpdater();
   const updaterSupported = context?.supportsAutoUpdate ?? true;
 
   const autoLockMinutes = usePersistedStore((s) => s.settings.autoLockMinutes);
@@ -111,8 +111,8 @@ export default function SettingsScreen() {
             {context.reason}
           </span>
         )}
-        {lastError && (checkError || !updaterSupported) && (
-          <span style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-label)", color: checkError ? "var(--color-status-error)" : "var(--color-text-secondary)", lineHeight: 1.5 }}>
+        {lastError && (checkError || installError || !updaterSupported) && (
+          <span style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-label)", color: (checkError || installError) ? "var(--color-status-error)" : "var(--color-text-secondary)", lineHeight: 1.5 }}>
             {lastError}
           </span>
         )}
