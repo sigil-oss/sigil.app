@@ -266,6 +266,12 @@ fn validate(uri_str: &str) -> Result<ParsedRequest, String> {
         (None, from_query) => from_query,
     };
 
+    // String-level private-IP check is intentional here. `callback` is also
+    // validated by DNS resolution inside `post_callback` at fetch time (the
+    // authoritative gate against rebinding). `redirect_uri` is opened by the
+    // OS/browser, not fetched by the wallet, so a Rust-side DNS lookup would
+    // be a TOCTOU race with no security benefit — the browser re-resolves
+    // independently and has its own same-origin protections.
     fn validate_delivery_url(url_str: &str, field: &str) -> Result<(), String> {
         let url = Url::parse(url_str).map_err(|_| format!("invalid {field} URL"))?;
         let host = url.host_str().unwrap_or("");
