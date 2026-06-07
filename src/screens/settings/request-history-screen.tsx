@@ -22,6 +22,7 @@ export default function RequestHistoryScreen() {
   const clearRequestHistory = usePersistedStore((s) => s.clearRequestHistory);
   const updateRequestHistoryItem = usePersistedStore((s) => s.updateRequestHistoryItem);
   const [retryingId, setRetryingId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
 
   async function retryCallback(item: RequestHistoryItem) {
     if (!item.callbackUrl || !item.callbackBody) return;
@@ -42,14 +43,34 @@ export default function RequestHistoryScreen() {
     await saveFileDialog(`sigil-request-result-${item.id}.json`, item.callbackBody);
   }
 
+  const q = search.trim().toLowerCase();
+  const filtered = q
+    ? requestHistory.filter(
+        (item) =>
+          item.dappName.toLowerCase().includes(q) ||
+          item.dappOrigin.toLowerCase().includes(q) ||
+          TYPE_LABEL[item.type].toLowerCase().includes(q) ||
+          item.action.includes(q),
+      )
+    : requestHistory;
+
   const statusBar = <ScreenHeader title="Request history" onBack={() => navigate("/settings")} />;
 
   return (
     <AppShell statusBar={statusBar} contentStyle={{ padding: "var(--space-4)", display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
       {requestHistory.length > 0 && (
-        <Button variant="ghost" shape="sharp" size="sm" style={{ width: "auto" }} onClick={clearRequestHistory}>
-          Clear history
-        </Button>
+        <div style={{ display: "flex", gap: "var(--space-3)", alignItems: "center" }}>
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by dApp, type..."
+            className="sigil-input"
+            style={{ flex: 1, background: "var(--color-bg-subtle)", borderRadius: "var(--radius-sharp)", padding: "var(--space-2) var(--space-3)", fontFamily: "var(--font-sans)", fontSize: "var(--text-body)", color: "var(--color-text-display)" }}
+          />
+          <Button variant="ghost" shape="sharp" size="sm" style={{ width: "auto", flexShrink: 0 }} onClick={clearRequestHistory}>
+            Clear
+          </Button>
+        </div>
       )}
 
       {requestHistory.length === 0 && (
@@ -57,8 +78,13 @@ export default function RequestHistoryScreen() {
           [NO REQUEST HISTORY]
         </div>
       )}
+      {requestHistory.length > 0 && filtered.length === 0 && (
+        <div style={{ textAlign: "center", padding: "var(--space-12) 0", fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-disabled)", letterSpacing: "0.05em" }}>
+          [NO RESULTS]
+        </div>
+      )}
 
-      {requestHistory.map((item) => {
+      {filtered.map((item) => {
         const callbackState =
           item.callbackStatus === "none"
             ? "No callback"
