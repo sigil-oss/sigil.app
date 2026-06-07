@@ -404,6 +404,7 @@ interface PersistedState {
   revokeDapp: (origin: string) => void;
   /** Removes a single permission; prunes the dApp entry entirely when no permissions remain. */
   revokeDappPermission: (origin: string, permission: ApprovedDapp["permissions"][number]) => void;
+  setDappAllowedIdentities: (origin: string, identities: string[] | undefined) => void;
   setTxMemo: (hash: string, memo: string) => void;
   deleteTxMemo: (hash: string) => void;
   setTxTags: (hash: string, tags: string[]) => void;
@@ -531,6 +532,18 @@ export const usePersistedStore = create<PersistedState>()(
             .filter((d) => d.permissions.length > 0);
           return { settings: { ...s.settings, approvedDapps } };
         }),
+
+      setDappAllowedIdentities: (origin, identities) =>
+        set((s) => ({
+          settings: {
+            ...s.settings,
+            approvedDapps: s.settings.approvedDapps.map((d) =>
+              d.origin === origin
+                ? { ...d, allowedIdentities: identities }
+                : d
+            ),
+          },
+        })),
 
       setTxMemo: (hash, memo) =>
         set((s) => ({ txMemos: clampTxMemos({ ...s.txMemos, [hash]: memo }) })),
