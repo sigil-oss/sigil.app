@@ -128,6 +128,7 @@ export default function NotificationsScreen() {
   const trayPollingMs = usePersistedStore((s) => s.settings.pollingIntervalTrayMs);
   const lockedPollingMs = usePersistedStore((s) => s.settings.pollingIntervalLockedMs);
   const largeIncomingThreshold = usePersistedStore((s) => s.settings.largeIncomingThreshold);
+  const lowBalanceThreshold = usePersistedStore((s) => s.settings.lowBalanceThreshold);
   const priceAlertAbove = usePersistedStore((s) => s.settings.priceAlertAbove);
   const priceAlertBelow = usePersistedStore((s) => s.settings.priceAlertBelow);
   const notificationEvents = usePersistedStore((s) => s.notificationEvents);
@@ -356,6 +357,12 @@ export default function NotificationsScreen() {
           onChange={(e) => updateSettings({ largeIncomingThreshold: e.target.value.replace(/[^\d]/g, "") })}
           placeholder="500000"
           disabled={!enabled || !onReceived || !onLargeIncoming}
+        />
+        <Input
+          label="Low balance warning (QU)"
+          value={lowBalanceThreshold}
+          onChange={(e) => updateSettings({ lowBalanceThreshold: e.target.value.replace(/[^\d]/g, "") })}
+          placeholder="e.g. 1000000"
         />
         <Input
           label="Price alert above (USD)"
