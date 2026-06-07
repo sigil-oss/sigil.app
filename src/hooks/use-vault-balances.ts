@@ -35,8 +35,8 @@ export function useVaultBalances() {
       );
       if (!result.ok) throw result.error;
       const balances = result.value.balances;
-      if (balances.length !== identities.length) {
-        throw new Error(`balance response length mismatch: expected ${identities.length}, got ${balances.length}`);
+      if (balances.length < identities.length) {
+        throw new Error(`balance response length mismatch: expected at least ${identities.length}, got ${balances.length}`);
       }
       const map: Record<string, bigint> = {};
       for (let i = 0; i < identities.length; i++) {
