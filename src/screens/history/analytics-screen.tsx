@@ -4,9 +4,10 @@ import { ScreenHeader } from "@/components/screen-header";
 import { Tag } from "@/components/tag";
 import { Divider } from "@/components/divider";
 import { useVaultAnalytics } from "@/hooks/use-vault-analytics";
+import { usePersistedStore } from "@/store/persisted";
 import { KNOWN_CONTRACT_ADDRESSES } from "@/lib/contracts";
-import { truncateId } from "@/lib/format";
-import type { MonthlySummaryStat } from "@/lib/history-analytics";
+import { truncateId, formatDate, formatQuCompact } from "@/lib/format";
+import type { MonthlySummaryStat, DailyActivityStat } from "@/lib/history-analytics";
 
 const FMT = new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 2 });
 function compactQu(value: bigint): string {
@@ -16,6 +17,9 @@ function compactQu(value: bigint): string {
 export default function AnalyticsScreen() {
   const navigate = useNavigate();
   const { data: analytics, isLoading } = useVaultAnalytics();
+  const priceAlerts = usePersistedStore((s) =>
+    s.notificationEvents.filter((e) => e.kind === "price_alert").slice(0, 10),
+  );
 
   return (
     <AppShell
@@ -108,6 +112,40 @@ export default function AnalyticsScreen() {
               </Section>
             </>
           )}
+
+          {/* ── Summary stats ──────────────────────────────────────────── */}
+          <Divider />
+          <Section label="Summary">
+            <DataRow primary="Total transactions" secondary="" value={String(analytics.txCount)} />
+            <DataRow primary="Avg. transaction" secondary="" value={`${formatQuCompact(analytics.avgTxAmount)} QU`} />
+          </Section>
+
+          {/* ── Activity heatmap ───────────────────────────────────────── */}
+          {analytics.dailyActivity.length > 0 && (
+            <>
+              <Divider />
+              <Section label="Activity (last 12 weeks)">
+                <ActivityHeatmap days={analytics.dailyActivity} />
+              </Section>
+            </>
+          )}
+        </>
+      )}
+
+      {/* ── Price alert breach history ──────────────────────────────────── */}
+      {priceAlerts.length > 0 && (
+        <>
+          <Divider />
+          <Section label="Price alerts">
+            {priceAlerts.map((event) => (
+              <DataRow
+                key={event.id}
+                primary={event.title}
+                secondary={formatDate(event.createdAt)}
+                value={event.body}
+              />
+            ))}
+          </Section>
         </>
       )}
     </AppShell>
@@ -165,6 +203,52 @@ function DataRow({ primary, secondary, value }: { primary: string; secondary: st
       <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-text-secondary)", letterSpacing: "0.04em", whiteSpace: "nowrap", flexShrink: 0 }}>
         {value}
       </span>
+    </div>
+  );
+}
+
+function ActivityHeatmap({ days }: { days: DailyActivityStat[] }) {
+  const max = Math.max(...days.map((d) => d.count), 1);
+  const dayMap = new Map(days.map((d) => [d.date, d.count]));
+
+  // Build 12-week grid ending today
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const cells: { date: string; count: number }[] = [];
+  for (let i = 83; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    cells.push({ date: key, count: dayMap.get(key) ?? 0 });
+  }
+
+  // Split into 12 columns of 7 days each
+  const weeks: typeof cells[] = [];
+  for (let w = 0; w < 12; w++) weeks.push(cells.slice(w * 7, w * 7 + 7));
+
+  return (
+    <div style={{ display: "flex", gap: 3 }}>
+      {weeks.map((week, wi) => (
+        <div key={wi} style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+          {week.map((cell) => {
+            const intensity = cell.count === 0 ? 0 : Math.max(0.15, cell.count / max);
+            return (
+              <div
+                key={cell.date}
+                title={`${cell.date}: ${cell.count} tx`}
+                style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: 2,
+                  background: cell.count === 0
+                    ? "var(--color-border-strong)"
+                    : `color-mix(in srgb, var(--color-status-success) ${Math.round(intensity * 100)}%, var(--color-border-strong))`,
+                }}
+              />
+            );
+          })}
+        </div>
+      ))}
     </div>
   );
 }

@@ -31,13 +31,21 @@ export interface MonthlySummaryStat {
   count: number;
 }
 
+export interface DailyActivityStat {
+  date: string;
+  count: number;
+}
+
 export interface VaultAnalyticsSummary {
   netFlow: bigint;
   totalIncoming: bigint;
   totalOutgoing: bigint;
+  txCount: number;
+  avgTxAmount: bigint;
   biggestCounterparties: CounterpartyStat[];
   contractUsage: ContractUsageStat[];
   monthlySummaries: MonthlySummaryStat[];
+  dailyActivity: DailyActivityStat[];
 }
 
 export function findClosestPriceSnapshot(timestamp: number | null, snapshots: PriceSnapshot[]): PriceSnapshot | null {
@@ -57,9 +65,11 @@ export function findClosestPriceSnapshot(timestamp: number | null, snapshots: Pr
 export function buildVaultAnalytics(identitySet: Set<string>, txs: AnalyticsTxLike[]): VaultAnalyticsSummary {
   let totalIncoming = 0n;
   let totalOutgoing = 0n;
+  let txCount = 0;
   const counterparties = new Map<string, CounterpartyStat>();
   const contractUsage = new Map<string, ContractUsageStat>();
   const monthly = new Map<number, MonthlySummaryStat>();
+  const daily = new Map<string, number>();
 
   for (const tx of txs) {
     if (!tx.moneyFlew) continue;
@@ -68,10 +78,18 @@ export function buildVaultAnalytics(identitySet: Set<string>, txs: AnalyticsTxLi
     const destinationMine = !!tx.destination && identitySet.has(tx.destination);
     if (!sourceMine && !destinationMine) continue;
 
-    const monthDate = tx.timestamp ? new Date(tx.timestamp) : null;
-    const monthSortKey = monthDate ? monthDate.getFullYear() * 100 + (monthDate.getMonth() + 1) : -1;
-    const monthLabel = monthDate
-      ? monthDate.toLocaleDateString(undefined, { year: "numeric", month: "short" })
+    txCount += 1;
+
+    const txDate = tx.timestamp ? new Date(tx.timestamp) : null;
+
+    if (txDate) {
+      const dateKey = txDate.toISOString().slice(0, 10);
+      daily.set(dateKey, (daily.get(dateKey) ?? 0) + 1);
+    }
+
+    const monthSortKey = txDate ? txDate.getFullYear() * 100 + (txDate.getMonth() + 1) : -1;
+    const monthLabel = txDate
+      ? txDate.toLocaleDateString(undefined, { year: "numeric", month: "short" })
       : "Unknown";
     const month = monthly.get(monthSortKey) ?? {
       month: monthLabel,
@@ -120,10 +138,14 @@ export function buildVaultAnalytics(identitySet: Set<string>, txs: AnalyticsTxLi
     monthly.set(monthSortKey, month);
   }
 
+  const avgTxAmount = txCount > 0 ? (totalIncoming + totalOutgoing) / BigInt(txCount) : 0n;
+
   return {
     netFlow: totalIncoming - totalOutgoing,
     totalIncoming,
     totalOutgoing,
+    txCount,
+    avgTxAmount,
     biggestCounterparties: [...counterparties.values()]
       .sort((a, b) => (a.volume === b.volume ? b.count - a.count : a.volume > b.volume ? -1 : 1))
       .slice(0, 5),
@@ -133,5 +155,9 @@ export function buildVaultAnalytics(identitySet: Set<string>, txs: AnalyticsTxLi
     monthlySummaries: [...monthly.values()]
       .sort((a, b) => b.sortKey - a.sortKey)
       .slice(0, 6),
+    dailyActivity: [...daily.entries()]
+      .map(([date, count]) => ({ date, count }))
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .slice(-84), // last 12 weeks
   };
 }
