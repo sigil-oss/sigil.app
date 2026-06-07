@@ -2,7 +2,7 @@
 "sigil": patch
 ---
 
-Security and code quality fixes (25 issues)
+Security and code quality fixes (37 issues)
 
 **Security (H1–H5)**
 - Transfer seed bytes to signing worker as a transferable `Uint8Array` instead of a plain string, so the seed never exists untracked in the structured-clone buffer
@@ -33,3 +33,21 @@ Security and code quality fixes (25 issues)
 - Use `Math.floor` for request expiry comparison to avoid float/int mismatch
 - Throw on balance response length mismatch instead of silently mapping missing entries to `0n`
 - Guard `BigInt()` conversion in `BalanceBar` against non-integer amount strings
+
+**High (H6–H7) — second audit**
+- Always write store key to file on Linux/macOS regardless of keyring outcome, and enable the real D-Bus secret-service backend via `sync-secret-service` feature; fixes persistent data loss on every app restart
+- Cache store encryption key in a `OnceLock` after first load to avoid repeated keyring/file round-trips
+- Fix updater error branch: previously hardcoded `platform: "windows"` / `supportsAutoUpdate: true`, breaking Linux AppImage update checks
+
+**Medium (M9–M14) — second audit**
+- Fix account name lookup to use `.find()` by `.index` field instead of array subscript, which diverges after hiding/removing accounts
+- Add `removeFromVault` routed through the vault mutex; use it in the remove-account flow instead of an unguarded re-encrypt
+- Restructure large-incoming and generic-received balance notification to `else if` so a large transfer doesn't fire both notifications
+- Fix password attempt counter surviving component remount by lifting it to module scope alongside the biometric failure counter
+- Include `passwordLockoutUntil` in the Zustand persist merge function so lockout state is not silently reset to 0 on rehydration
+
+**Low (L13–L16) — second audit**
+- Apply the same password strength requirement (`strength.level >= 1`, not `length >= 10`) to the vault import flow
+- Zero the seed `Uint8Array` in the crypto worker's `finally` block so it is wiped from worker memory after every signing operation
+- Clamp `contract_index` to `[0, 1023]` and `input_type` to `[0, 65535]` in `scCallRequestSchema` to reject out-of-protocol values
+- Document why string-level private-IP check is correct for `redirect_uri` (browser-opened, not wallet-fetched; DNS resolution is the `post_callback` gate)
