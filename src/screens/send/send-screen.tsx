@@ -20,6 +20,7 @@ import { isValidIdentity, newId } from "@/lib/crypto";
 import { estimateTargetTick, getLatestTick } from "@/lib/rpc";
 import { broadcastTx } from "@/lib/broadcast";
 import { buildTransferFromSession } from "@/lib/secure-session";
+import { unlockVault } from "@/lib/vault";
 import { truncateId, formatQu, extractMessage } from "@/lib/format";
 import { ReviewRow } from "@/components/review-row";
 import { TxSending, TxError } from "@/components/tx-status";
@@ -63,7 +64,10 @@ export default function SendScreen() {
     !!(settings.notificationsEnabled && settings.notifyOnConfirmed)
   );
   const [watchResult, setWatchResult] = useState<"pending" | "confirmed" | "failed">("pending");
-  const [highValueConfirmed, setHighValueConfirmed] = useState(false);
+  const [highValuePassword, setHighValuePassword] = useState("");
+  const [highValuePasswordError, setHighValuePasswordError] = useState("");
+  const [highValueVerified, setHighValueVerified] = useState(false);
+  const [highValueVerifying, setHighValueVerifying] = useState(false);
 
   const [showPicker, setShowPicker] = useState(false);
 
@@ -145,9 +149,26 @@ export default function SendScreen() {
     return ok;
   }
 
+  async function verifyHighValue() {
+    if (!vault?.encryptedData || !highValuePassword) return;
+    setHighValueVerifying(true);
+    setHighValuePasswordError("");
+    try {
+      await unlockVault(vault.encryptedData, highValuePassword);
+      setHighValueVerified(true);
+      setHighValuePassword("");
+    } catch {
+      setHighValuePasswordError("WRONG PASSWORD");
+    } finally {
+      setHighValueVerifying(false);
+    }
+  }
+
   function goReview() {
     if (validateInputs()) {
-      setHighValueConfirmed(false);
+      setHighValueVerified(false);
+      setHighValuePassword("");
+      setHighValuePasswordError("");
       setStep("review");
     }
   }
@@ -307,31 +328,33 @@ export default function SendScreen() {
             </div>
           )}
 
-          {needsHighValueConfirmation && (
-            <div
-              role="checkbox"
-              aria-checked={highValueConfirmed}
-              tabIndex={0}
-              onClick={() => setHighValueConfirmed((value) => !value)}
-              onKeyDown={(e) => e.key === " " && setHighValueConfirmed((value) => !value)}
-              style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", cursor: "pointer", userSelect: "none" }}
-            >
-              <div style={{
-                width: 14, height: 14, flexShrink: 0,
-                border: `1px solid ${highValueConfirmed ? "var(--color-text-display)" : "var(--color-border-strong)"}`,
-                borderRadius: 2,
-                background: highValueConfirmed ? "var(--color-text-display)" : "none",
-                display: "flex", alignItems: "center", justifyContent: "center",
-              }}>
-                {highValueConfirmed && <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--color-bg-base)", lineHeight: 1 }}>✓</span>}
+          {needsHighValueConfirmation && !highValueVerified && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)", padding: "var(--space-4)", border: "1px solid var(--color-status-warning)", borderRadius: "var(--radius-sharp)" }}>
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-status-warning)", letterSpacing: "0.05em" }}>
+                [HIGH-VALUE TRANSFER — CONFIRM WITH VAULT PASSWORD]
               </div>
-              <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-status-warning)", letterSpacing: "0.05em" }}>
-                HIGH-VALUE TRANSFER CONFIRMED
-              </span>
+              <Input
+                type="password"
+                label="Vault password"
+                value={highValuePassword}
+                onChange={(e) => { setHighValuePassword(e.target.value); setHighValuePasswordError(""); }}
+                onKeyDown={(e) => e.key === "Enter" && !highValueVerifying && verifyHighValue()}
+                error={highValuePasswordError}
+                placeholder="••••••••••"
+                autoComplete="current-password"
+              />
+              <Button variant="secondary" shape="sharp" onClick={verifyHighValue} loading={highValueVerifying} disabled={!highValuePassword}>
+                Confirm
+              </Button>
+            </div>
+          )}
+          {needsHighValueConfirmation && highValueVerified && (
+            <div style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-mono-sm)", color: "var(--color-status-success)", letterSpacing: "0.05em" }}>
+              [HIGH-VALUE TRANSFER CONFIRMED ✓]
             </div>
           )}
 
-          <Button onClick={send} disabled={!wallet || !tickInfo || hasPendingTx || (needsHighValueConfirmation && !highValueConfirmed)}>Sign and send</Button>
+          <Button onClick={send} disabled={!wallet || !tickInfo || hasPendingTx || (needsHighValueConfirmation && !highValueVerified)}>Sign and send</Button>
           <Button variant="secondary" shape="sharp" onClick={() => setStep("input")}>Edit</Button>
         </>
       )}
