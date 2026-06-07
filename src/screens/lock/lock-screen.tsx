@@ -43,7 +43,7 @@ export default function LockScreen() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [bioFailures, setBioFailures] = useState(_bioFailures);
-  const [passwordAttempts, setPasswordAttempts] = useState(_passwordAttempts);
+  const [, setPasswordAttempts] = useState(_passwordAttempts);
   const [lockoutSecsLeft, setLockoutSecsLeft] = useState(0);
   const lockoutRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const passwordLockoutUntil = usePersistedStore((s) => s.passwordLockoutUntil);

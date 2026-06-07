@@ -29,7 +29,6 @@ function buildRedactedSettings(settings: ReturnType<typeof usePersistedStore.get
   return {
     ...settings,
     exportSigningPrivateJwk: settings.exportSigningPrivateJwk ? "[redacted]" : null,
-    exportSigningPublicJwk: settings.exportSigningPublicJwk ? "[redacted]" : null,
   };
 }
 
