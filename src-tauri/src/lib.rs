@@ -19,6 +19,16 @@ use tauri_plugin_clipboard_manager::ClipboardExt;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // When running as an AppImage, point TMPDIR at the AppImage's own directory so the
+    // updater downloads to the same filesystem — avoids cross-device rename failures and
+    // noexec-tmpfs permission errors that block in-place AppImage replacement.
+    #[cfg(target_os = "linux")]
+    if let Ok(appimage) = std::env::var("APPIMAGE") {
+        if let Some(parent) = std::path::Path::new(&appimage).parent() {
+            std::env::set_var("TMPDIR", parent);
+        }
+    }
+
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())

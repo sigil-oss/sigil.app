@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Pencil } from "lucide-react";
 import { AppShell } from "@/layouts/app-shell";
@@ -114,6 +114,19 @@ export default function SendScreen() {
     }),
     [contacts, destination, identity, recentRecipientIdentities, vaultAccountTargets],
   );
+
+  // Sync destination/amount from URL params when they change (e.g. incoming deep link while already on /send)
+  const prevSearchRef = useRef(searchParams.toString());
+  useEffect(() => {
+    const current = searchParams.toString();
+    if (current === prevSearchRef.current) return;
+    prevSearchRef.current = current;
+    if (step !== "input") return;
+    const to = searchParams.get("to");
+    const amount = searchParams.get("amount");
+    if (to) setDestination(to.toUpperCase());
+    if (amount) setAmountStr(amount);
+  }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Restore failed tx draft on mount (once per session)
   useEffect(() => {
