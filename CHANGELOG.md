@@ -1,5 +1,12 @@
 # sigil
 
+## 0.12.1
+
+### Patch Changes
+
+- 73b847e: Fix amount param not consumed when deep link opens an already-mounted send screen; fix AppImage update failing with permission denied on noexec tmpfs
+- 73b847e: Update app icons to new Bracket Sigil brand identity
+
 ## 0.12.0
 
 ### Minor Changes
